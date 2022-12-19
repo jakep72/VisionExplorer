@@ -47,9 +47,6 @@ class Window(QMainWindow):
     def mouseMoveEvent(self, event):
         self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
 
-    # def mouseReleaseEvent(self, event):
-    #     self.rubberBand.hide()
-
     def __init__(self):
         # super().__init__()
         super(Window, self).__init__()
