@@ -7,5 +7,5 @@ An application for exploring machine vision
 * Play, Pause, Step forward and Backward through film strip
 * Zoom, Pan, etc on Main Screen
 * Define ROI's
-* Add Machine Vision functions -- find line, contours, 
+* Add Machine Vision functions -- find line, contours, etc
 * Make Menubar functional
