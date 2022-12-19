@@ -1,118 +1,16 @@
-# Copyright (C) 2022 The Qt Company Ltd.
-# SPDX-License-Identifier: LicenseRef-Qt-Commercial OR BSD-3-Clause
-
-import os
 import sys
 import time
-
-import cv2
+from MainScreenThread import Thread
+from PlaybackScreenThread import ScrollThread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
                                QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand)
-
-
-class ScrollThread(QThread):
-    updatescroll = Signal(list)
-
-    def __init__(self, parent=None):
-        QThread.__init__(self, parent)
-        self.image_source = None
-        self.status = True
-        self.cap = True
-        
-        
-    # @Slot(str)
-    def set_file(self, fname):
-        # The data comes with the 'opencv-python' module
-        self.image_source =  fname.text()
-        
-
-    def run(self):
-        
-        cap = cv2.VideoCapture(self.image_source)
-        total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
-        
-        # for i in range(30):
-        for i in range(int(total_frames)):
-            cap.set(cv2.CAP_PROP_POS_FRAMES, i)
-            ret, frame = cap.read()
-
-            if ret:
-                frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                # cv2.putText(frame,"frame #"+str(i+1),(75,75),cv2.FONT_HERSHEY_COMPLEX,4,(255,255,255),6)
-                frame = cv2.resize(frame,(160,120))
-
-                h, w, ch = frame.shape
-                img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                self.updatescroll.emit([img,i])
-                
-            else:
-                self.quit()
-        self.quit()
-                    
-
-                    
-
-class Thread(QThread):
-    updateFrame = Signal(QImage)
-    
-
-    def __init__(self, parent=None):
-        QThread.__init__(self, parent)
-        self.image_source = None
-        self.status = True
-        self.cap = True
-        
-        
-    # @Slot(str)
-    def set_file(self, fname,frame_no):
-        self.image_source =  fname.text()
-        self.frame_no = int(frame_no)
-        
-
-    def run(self):
-        while True:
-            self.status = True
-            
-            if self.image_source != None:
-
-                source = self.image_source
-                self.cap = cv2.VideoCapture(source)
-                
-                while self.status:
-                    if self.image_source != None and self.image_source != source:
-                        self.status = False
-
-                    self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_no)
-                    ret, frame = self.cap.read()
-                    if not ret:
-                        continue
-
-                    # # Reading the image in RGB to display it
-                    frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frame = cv2.resize(frame,(640,480))
-
-                    # # Creating and scaling QImage
-                    h, w, ch = frame.shape
-                    img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                    # scaled_img = img.scaled(640, 480, Qt.KeepAspectRatio)
-                    
-                    # Emit signal
-                    self.updateFrame.emit(img)
-                # sys.exit(-1)
-            else:
-                pass
-           
-            
-
-
-
+                   
 class Window(QMainWindow):
     def eventFilter(self, object, event):
-        
         if str(event.type()) == 'Type.HoverMove':
             self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
             self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
@@ -136,24 +34,21 @@ class Window(QMainWindow):
                 firstframe.setStyleSheet("border:0px solid black")
     
     def mousePressEvent(self, event):
-
-        self.origin = QPoint(event.position().x(),event.position().y())
-        print(self.origin)
-        self.rubberBand = None
-        if not self.rubberBand:
-            self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
-        self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-        self.rubberBand.show()
+        if self.rubberBand:
+            self.rubberBand.hide()
+        widget = self.childAt(event.position().x(),event.position().y())
+        if widget.objectName() == 'MainScreen':
+            self.origin = QPoint(event.position().x(),event.position().y())
+            if not self.rubberBand:
+                self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+            self.rubberBand.show()
 
     def mouseMoveEvent(self, event):
-
         self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
 
-    def mouseReleaseEvent(self, event):
-
-        self.rubberBand.hide()
-        # determine selection, for example using QRect::intersects()
-        # and QRect::contains().
+    # def mouseReleaseEvent(self, event):
+    #     self.rubberBand.hide()
 
     def __init__(self):
         # super().__init__()
@@ -162,8 +57,8 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.setMouseTracking(True)
         self.active_widget = None
+        self.rubberBand = None
         
-        # self.showFullScreen()
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
         self.showMaximized()
@@ -181,6 +76,7 @@ class Window(QMainWindow):
 
         # Create a label for the display camera
         self.label = QLabel(self)
+        self.label.setObjectName('MainScreen')
         self.label.setFixedSize(640, 480)
         self.label.setStyleSheet("background-color:black")
         self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
