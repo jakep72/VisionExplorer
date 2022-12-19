@@ -15,13 +15,10 @@ class Thread(QThread):
         self.status = True
         self.cap = True
         
-        
-    # @Slot(str)
     def set_file(self, fname,frame_no):
         self.image_source =  fname.text()
         self.frame_no = int(frame_no)
         
-
     def run(self):
         while True:
             self.status = True
