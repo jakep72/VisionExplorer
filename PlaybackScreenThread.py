@@ -15,11 +15,10 @@ class ScrollThread(QThread):
         self.image_source = None
         self.status = True
         self.cap = True
-        
+             
     def set_file(self, fname):
         self.image_source =  fname.text()
         
-
     def run(self):
         cap = cv2.VideoCapture(self.image_source)
         total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
@@ -35,7 +34,7 @@ class ScrollThread(QThread):
 
                 h, w, ch = frame.shape
                 img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                self.updatescroll.emit([img,i])
+                self.updatescroll.emit([img,i,total_frames])
                 
             else:
                 self.quit()

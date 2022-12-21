@@ -7,7 +7,7 @@ from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView)
                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
@@ -46,7 +46,7 @@ class Window(QMainWindow):
 
     def mouseMoveEvent(self, event):
         self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
-
+    
     def __init__(self):
         # super().__init__()
         super(Window, self).__init__()
@@ -56,6 +56,8 @@ class Window(QMainWindow):
         self.active_widget = None
         self.rubberBand = None
         
+
+         
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
         self.showMaximized()
@@ -89,6 +91,9 @@ class Window(QMainWindow):
 
         self.scrollth = ScrollThread(self)
         self.scrollth.updatescroll.connect(self.setScrollImage)
+        
+
+        
 
         # Main layout
         toplayout = QHBoxLayout()
@@ -210,15 +215,27 @@ class Window(QMainWindow):
         self.label.setPixmap(QPixmap.fromImage(image))
 
     @Slot(QImage)
-    def setScrollImage(self,data):
+    def setScrollImage(self,data):       
         self.slabel=QLabel()
         self.slabel.setObjectName(str(data[1]))
         self.slabel.setFixedSize(160, 120)
         self.slabel.setPixmap(QPixmap.fromImage(data[0]))
         if self.slabel.objectName() == '0':
+            self.progressDialog = QProgressDialog("Loading Images..", None, 0, data[2], self)
+            self.progressDialog.setWindowTitle(" ")
             self.slabel.setStyleSheet("border: 5px solid green;")
         self.contentwidget.layout().addWidget(self.slabel)
-        
+        self.prog_update(data[1])
+
+    def prog_update(self,frame):
+        if self.scrollth.isRunning():
+            self.table.setDisabled(1)
+            self.progressDialog.setValue(frame)
+            self.progressDialog.show()
+        else:
+            self.table.setEnabled(1)
+            self.progressDialog.hide()
+           
 if __name__ == "__main__":
     app = QApplication()
     w = Window()
