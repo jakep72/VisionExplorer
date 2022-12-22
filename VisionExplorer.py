@@ -1,4 +1,5 @@
 import sys
+import os
 import time
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
@@ -85,16 +86,12 @@ class Window(QMainWindow):
         self.poslabel.setAlignment(Qt.AlignCenter)
         self.poslabel.setStyleSheet("color:white")
 
-        # Thread in charge of updating the image
         self.th = Thread(self)
         self.th.updateFrame.connect(self.setImage)
 
         self.scrollth = ScrollThread(self)
         self.scrollth.updatescroll.connect(self.setScrollImage)
         
-
-        
-
         # Main layout
         toplayout = QHBoxLayout()
         leftlayout = QVBoxLayout()
@@ -197,7 +194,7 @@ class Window(QMainWindow):
 
         if self.table.item(0,0) and not self.scrollth.isRunning():
             self.th.set_file(self.table.item(0,0),0)
-        if self.table.item(0,0).text().lower().endswith('.mp4'):
+        if self.table.item(0,0).text().lower().endswith('.mp4') or os.path.isdir(self.table.item(0,0).text()):
             self.active_widget = None
             self.scrollth.quit()
             time.sleep(1)
