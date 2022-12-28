@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle)
                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
@@ -33,12 +33,19 @@ class Window(QMainWindow):
         widgets = self.contentwidget.findChildren(QLabel)
         
         if widget is not None and widget.objectName():
+            self.playback_mode = 'idle'
             self.active_widget = widget
             self.th.set_file(self.table.item(0,0),widget.objectName())
             widget.setStyleSheet("border: 5px solid green;")
             for w in widgets:
                 if w.objectName() != self.active_widget.objectName():
                     w.setStyleSheet("border:0px solid black")
+        if int(self.active_widget.objectName()) != self.total_frames:
+            self.play.setDisabled(0)
+            self.play.setCheckable(1)
+        if int(self.active_widget.objectName()) != 0:
+            self.rewind.setDisabled(0)
+            self.rewind.setCheckable(1)
 
     def mousePressEvent(self, event):
         if self.rubberBand:
@@ -61,6 +68,7 @@ class Window(QMainWindow):
         self.setAcceptDrops(True)
         self.setMouseTracking(True)
         self.active_widget = None
+        self.playback_mode = 'idle'
         self.rubberBand = None
         self.total_frames = None
         
@@ -135,7 +143,13 @@ class Window(QMainWindow):
         self.start()
 
     def create_scroll_layout(self):
-        
+        foreground = "green"
+        color = "gray"
+        disabledForeground = "red"
+        disabledColor = color
+        bold = "bold"
+
+
         self.bottomlayout.deleteLater()
         self.scrollArea.deleteLater()
         self.contentwidget.deleteLater()
@@ -145,16 +159,48 @@ class Window(QMainWindow):
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+
         self.play = QPushButton("Play")
+        self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
         self.play.setCheckable(True)
-        # self.play.setEnabled(False)
+        self.play.setStyleSheet(":enabled { color: " + foreground 
+                             + "; background-color: " + color
+                             + "; font-weight:  " + bold
+                             + " } :disabled { color: " + disabledForeground 
+                             + "; background-color: " + disabledColor 
+                             + "; font-weight:  " + bold + " }")
         self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
+
+        self.pause = QPushButton("Pause")
+        self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
+        self.pause.setCheckable(True)
+        self.pause.setStyleSheet(":enabled { color: " + foreground 
+                             + "; background-color: " + color
+                             + "; font-weight:  " + bold
+                             + " } :disabled { color: " + disabledForeground 
+                             + "; background-color: " + disabledColor 
+                             + "; font-weight:  " + bold + " }")
+        self.pause.clicked.connect(lambda:self.pauseButtonClicked())
+
+        self.rewind = QPushButton("Rewind")
+        self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
+        self.rewind.setCheckable(True)
+        self.rewind.setStyleSheet(":enabled { color: " + foreground 
+                             + "; background-color: " + color
+                             + "; font-weight:  " + bold
+                             + " } :disabled { color: " + disabledForeground 
+                             + "; background-color: " + disabledColor 
+                             + "; font-weight:  " + bold + " }")
+        self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
+
         self.contentwidget.setLayout(self.scroll_layout)
         
         self.scrollArea.setWidget(self.contentwidget)
         self.scrollArea.setFixedHeight(160)
         self.scrollArea.setWidgetResizable(True)
         
+        self.bottomlayout.addWidget(self.rewind)
+        self.bottomlayout.addWidget(self.pause)
         self.bottomlayout.addWidget(self.play)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
@@ -166,6 +212,8 @@ class Window(QMainWindow):
         self.contentwidget.deleteLater()
         self.scroll_layout.deleteLater()
         self.play.deleteLater()
+        self.pause.deleteLater()
+        self.rewind.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
@@ -173,6 +221,10 @@ class Window(QMainWindow):
         self.scroll_layout = QHBoxLayout()
         self.play = QPushButton()
         self.play.setCheckable(True)
+        self.pause = QPushButton()
+        self.pause.setCheckable(True)
+        self.rewind = QPushButton()
+        self.rewind.setCheckable(True)
         self.contentwidget.setLayout(self.scroll_layout)
 
     def dragEnterEvent(self, e):
@@ -245,11 +297,14 @@ class Window(QMainWindow):
         if self.scrollth.isRunning():
             self.table.setDisabled(1)
             self.play.setDisabled(1)
+            self.pause.setDisabled(1)
+            self.rewind.setDisabled(1)
             self.progressDialog.setValue(frame)
             self.progressDialog.show()
         else:
             
             self.play.setEnabled(1)
+            self.pause.setEnabled(1)
             self.table.setEnabled(1)
             self.progressDialog.hide()
 
@@ -261,14 +316,81 @@ class Window(QMainWindow):
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
-        if i > 0:
-            prev_frame = self.findChild(QWidget,str(i-1))
-            prev_frame.setStyleSheet("border:0px solid black")
-        if i < self.total_frames-1:
-            QTimer.singleShot(100, lambda:self.playButtonClicked(i))
-        else:
+        widgets = self.contentwidget.findChildren(QLabel)
+        for w in widgets:
+            if w.objectName() != self.active_widget.objectName():
+                w.setStyleSheet("border:0px solid black")
+                
+        if self.playback_mode == 'paused':
             self.play.setDisabled(0)
             self.play.setCheckable(1)
+            self.rewind.setDisabled(0)
+            self.rewind.setCheckable(1)
+            self.playback_mode = 'playing'
+
+        else:
+            if i < self.total_frames-1:
+                self.playback_mode = 'playing'
+                self.pause.setDisabled(0)
+                self.pause.setCheckable(1)
+                QTimer.singleShot(100, lambda:self.playButtonClicked(i))
+
+            elif i == self.total_frames-1:
+                self.play.setDisabled(1)
+                self.play.setCheckable(0)
+                self.playback_mode == 'idle'
+            else:
+                self.play.setDisabled(0)
+                self.play.setCheckable(1)
+                self.playback_mode == 'idle'
+
+    def rewindButtonClicked(self,i):
+        i-=1
+        self.rewind.setDisabled(1)
+        self.rewind.setCheckable(0)
+        self.th.set_file(self.table.item(0,0),i)
+        self.active_widget = self.findChild(QWidget,str(i))
+        self.active_widget.setStyleSheet("border: 5px solid green;")
+        self.scrollArea.ensureWidgetVisible(self.active_widget)
+        widgets = self.contentwidget.findChildren(QLabel)
+        for w in widgets:
+            if w.objectName() != self.active_widget.objectName():
+                w.setStyleSheet("border:0px solid black")
+                
+        if self.playback_mode == 'paused':
+            self.rewind.setDisabled(0)
+            self.rewind.setCheckable(1)
+            self.play.setDisabled(0)
+            self.play.setCheckable(1)
+            self.playback_mode = 'rewind'
+
+        else:
+            if i > 0:
+                self.playback_mode = 'rewind'
+                self.pause.setDisabled(0)
+                self.pause.setCheckable(1)
+                QTimer.singleShot(100, lambda:self.rewindButtonClicked(i))
+
+            elif i == 0:
+                self.rewind.setDisabled(1)
+                self.rewind.setCheckable(0)
+                self.playback_mode == 'idle'
+            else:
+                self.rewind.setDisabled(0)
+                self.rewind.setCheckable(1)
+                self.playback_mode == 'idle'
+
+    def pauseButtonClicked(self):
+        self.pause.setDisabled(1)
+        self.pause.setCheckable(0)
+        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()))
+        widgets = self.contentwidget.findChildren(QLabel)
+        self.active_widget.setStyleSheet("border: 5px solid green;")
+        self.scrollArea.ensureWidgetVisible(self.active_widget)
+        for w in widgets:
+            if w.objectName() != self.active_widget.objectName():
+                w.setStyleSheet("border:0px solid black")
+        self.playback_mode = 'paused'
 
             
             
