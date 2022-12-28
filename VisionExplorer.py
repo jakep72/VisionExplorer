@@ -12,7 +12,11 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
-        if str(event.type()) == 'Type.HoverMove':
+        if str(event.type()) == 'Type.HoverMove' and self.active_widget is not None:
+            self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
+            self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
+            return True
+        elif str(event.type()) == 'Type.HoverMove' and self.active_widget is None:
             self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
             self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
             return True
@@ -26,13 +30,15 @@ class Window(QMainWindow):
         if self.active_widget is not None:
             self.active_widget.setStyleSheet("border:0px solid black")
         widget = self.childAt(event.position().x(),event.position().y())
+        widgets = self.contentwidget.findChildren(QLabel)
+        
         if widget is not None and widget.objectName():
             self.active_widget = widget
             self.th.set_file(self.table.item(0,0),widget.objectName())
             widget.setStyleSheet("border: 5px solid green;")
-            if widget.objectName() != '0':
-                firstframe = self.findChild(QWidget,'0')
-                firstframe.setStyleSheet("border:0px solid black")
+            for w in widgets:
+                if w.objectName() != self.active_widget.objectName():
+                    w.setStyleSheet("border:0px solid black")
 
     def mousePressEvent(self, event):
         if self.rubberBand:
@@ -142,7 +148,7 @@ class Window(QMainWindow):
         self.play = QPushButton("Play")
         self.play.setCheckable(True)
         # self.play.setEnabled(False)
-        self.play.clicked.connect(lambda:self.playButtonClicked(0))
+        self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
         self.contentwidget.setLayout(self.scroll_layout)
         
         self.scrollArea.setWidget(self.contentwidget)
@@ -182,7 +188,7 @@ class Window(QMainWindow):
             urls = e.mimeData().urls()
             for url in urls:
                 fname = url.toLocalFile()
-                self.table.setItem(0,0,QTableWidgetItem(fname))
+                self.table.setItem(0,0,QTableWidgetItem(fname))  
         else:
             e.ignore()
 
@@ -227,6 +233,7 @@ class Window(QMainWindow):
         self.slabel.setFixedSize(160, 120)
         self.slabel.setPixmap(QPixmap.fromImage(data[0]))
         if self.slabel.objectName() == '0':
+            self.active_widget = self.slabel
             self.progressDialog = QProgressDialog("Loading Images..", None, 0, data[2], self)
             self.progressDialog.setWindowTitle(" ")
             self.slabel.setStyleSheet("border: 5px solid green;")
@@ -248,25 +255,20 @@ class Window(QMainWindow):
 
     def playButtonClicked(self,i):
         i+=1
-        print(i)
+        self.play.setDisabled(1)
+        self.play.setCheckable(0)
         self.th.set_file(self.table.item(0,0),i)
-        active_frame = self.findChild(QWidget,str(i))
-        active_frame.setStyleSheet("border: 5px solid green;")
-        self.scrollArea.ensureWidgetVisible(active_frame)
+        self.active_widget = self.findChild(QWidget,str(i))
+        self.active_widget.setStyleSheet("border: 5px solid green;")
+        self.scrollArea.ensureWidgetVisible(self.active_widget)
         if i > 0:
             prev_frame = self.findChild(QWidget,str(i-1))
             prev_frame.setStyleSheet("border:0px solid black")
-        if i < self.total_frames:
-        # for i in range(int(self.total_frames)):
-            # self.th.quit()
-            # # time.sleep(.1)
-            # self.th.start()
-            # self.th.set_file(self.table.item(0,0),i)
-            # # time.sleep(.5)
-            # self.th.updateFrame.connect(self.setImage)
-            
-
+        if i < self.total_frames-1:
             QTimer.singleShot(100, lambda:self.playButtonClicked(i))
+        else:
+            self.play.setDisabled(0)
+            self.play.setCheckable(1)
 
             
             
