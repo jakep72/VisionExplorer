@@ -3,7 +3,7 @@ import os
 import time
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
-from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize
+from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
@@ -33,7 +33,7 @@ class Window(QMainWindow):
             if widget.objectName() != '0':
                 firstframe = self.findChild(QWidget,'0')
                 firstframe.setStyleSheet("border:0px solid black")
-    
+
     def mousePressEvent(self, event):
         if self.rubberBand:
             self.rubberBand.hide()
@@ -56,6 +56,7 @@ class Window(QMainWindow):
         self.setMouseTracking(True)
         self.active_widget = None
         self.rubberBand = None
+        self.total_frames = None
         
 
          
@@ -138,12 +139,17 @@ class Window(QMainWindow):
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+        self.play = QPushButton("Play")
+        self.play.setCheckable(True)
+        # self.play.setEnabled(False)
+        self.play.clicked.connect(lambda:self.playButtonClicked(0))
         self.contentwidget.setLayout(self.scroll_layout)
         
         self.scrollArea.setWidget(self.contentwidget)
         self.scrollArea.setFixedHeight(160)
         self.scrollArea.setWidgetResizable(True)
-
+        
+        self.bottomlayout.addWidget(self.play)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
     
@@ -153,11 +159,14 @@ class Window(QMainWindow):
         self.scrollArea.deleteLater()
         self.contentwidget.deleteLater()
         self.scroll_layout.deleteLater()
+        self.play.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+        self.play = QPushButton()
+        self.play.setCheckable(True)
         self.contentwidget.setLayout(self.scroll_layout)
 
     def dragEnterEvent(self, e):
@@ -223,16 +232,46 @@ class Window(QMainWindow):
             self.slabel.setStyleSheet("border: 5px solid green;")
         self.contentwidget.layout().addWidget(self.slabel)
         self.prog_update(data[1])
+        self.total_frames = data[2]
 
     def prog_update(self,frame):
         if self.scrollth.isRunning():
             self.table.setDisabled(1)
+            self.play.setDisabled(1)
             self.progressDialog.setValue(frame)
             self.progressDialog.show()
         else:
+            
+            self.play.setEnabled(1)
             self.table.setEnabled(1)
             self.progressDialog.hide()
-           
+
+    def playButtonClicked(self,i):
+        i+=1
+        print(i)
+        self.th.set_file(self.table.item(0,0),i)
+        active_frame = self.findChild(QWidget,str(i))
+        active_frame.setStyleSheet("border: 5px solid green;")
+        self.scrollArea.ensureWidgetVisible(active_frame)
+        if i > 0:
+            prev_frame = self.findChild(QWidget,str(i-1))
+            prev_frame.setStyleSheet("border:0px solid black")
+        if i < self.total_frames:
+        # for i in range(int(self.total_frames)):
+            # self.th.quit()
+            # # time.sleep(.1)
+            # self.th.start()
+            # self.th.set_file(self.table.item(0,0),i)
+            # # time.sleep(.5)
+            # self.th.updateFrame.connect(self.setImage)
+            
+
+            QTimer.singleShot(100, lambda:self.playButtonClicked(i))
+
+            
+            
+        
+
 if __name__ == "__main__":
     app = QApplication()
     w = Window()
