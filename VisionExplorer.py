@@ -83,7 +83,7 @@ class Window(QMainWindow):
         self.playback_mode = 'idle'
         self.rubberBand = None
         self.total_frames = None
-        self.frame_rate = 25
+        self.frame_rate = 1
         
 
          
@@ -142,6 +142,8 @@ class Window(QMainWindow):
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+        self.playback_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
@@ -163,16 +165,33 @@ class Window(QMainWindow):
         bold = "bold"
         button_style = ":enabled { color: " + foreground + "; background-color: " + color + "; font-weight:  " + bold + " } :disabled { color: " + disabledForeground + "; background-color: " + disabledColor + "; font-weight:  " + bold + " }"
 
+        delay_style = 'QSlider::groove:horizontal {\
+                        border: 1px solid #999999;\
+                        height: 8px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */\
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);\
+                        margin: 2px 0;\
+                        }\
+                        QSlider::handle:horizontal {\
+                            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f);\
+                            border: 1px solid #5c5c5c;\
+                            width: 18px;\
+                            margin: -2px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */\
+                            border-radius: 3px;\
+                        }'
 
         self.bottomlayout.deleteLater()
         self.scrollArea.deleteLater()
         self.contentwidget.deleteLater()
         self.scroll_layout.deleteLater()
+        self.playback_layout.deleteLater()
+        self.button_layout.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+        self.playback_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
 
         self.play = QPushButton("Play")
         self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
@@ -193,8 +212,10 @@ class Window(QMainWindow):
         self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
 
         self.delay = QSlider(Qt.Horizontal)
-        self.delay.setRange(25,1000)
-        self.delay.setSingleStep(25)
+        self.delay.setStyleSheet(delay_style)
+        self.delay.setRange(1,100)
+        self.delay.setSingleStep(5)
+        self.delay.setMaximumWidth(250)
         self.delay.sliderMoved.connect(self.slider_position)
 
         self.contentwidget.setLayout(self.scroll_layout)
@@ -203,10 +224,14 @@ class Window(QMainWindow):
         self.scrollArea.setFixedHeight(160)
         self.scrollArea.setWidgetResizable(True)
         
-        self.bottomlayout.addWidget(self.rewind)
-        self.bottomlayout.addWidget(self.pause)
-        self.bottomlayout.addWidget(self.play)
-        self.bottomlayout.addWidget(self.delay)
+        self.button_layout.addWidget(self.rewind)
+        self.button_layout.addWidget(self.pause)
+        self.button_layout.addWidget(self.play)
+
+        self.playback_layout.addLayout(self.button_layout)
+        self.playback_layout.addWidget(self.delay)
+
+        self.bottomlayout.addLayout(self.playback_layout)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
     
@@ -216,6 +241,8 @@ class Window(QMainWindow):
         self.scrollArea.deleteLater()
         self.contentwidget.deleteLater()
         self.scroll_layout.deleteLater()
+        self.playback_layout.deleteLater()
+        self.button_layout.deleteLater()
         self.play.deleteLater()
         self.pause.deleteLater()
         self.rewind.deleteLater()
@@ -225,6 +252,8 @@ class Window(QMainWindow):
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
         self.scroll_layout = QHBoxLayout()
+        self.playback_layout = QVBoxLayout()
+        self.button_layout = QHBoxLayout()
         self.play = QPushButton()
         self.play.setCheckable(True)
         self.pause = QPushButton()
@@ -344,7 +373,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'playing'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot(self.frame_rate, lambda:self.playButtonClicked(i))
+                QTimer.singleShot((1000/self.frame_rate), lambda:self.playButtonClicked(i))
 
             elif i == self.total_frames-1:
                 self.play.setDisabled(1)
@@ -382,7 +411,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'rewind'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot(self.frame_rate, lambda:self.rewindButtonClicked(i))
+                QTimer.singleShot((1000/self.frame_rate), lambda:self.rewindButtonClicked(i))
 
             elif i == 0:
                 self.rewind.setDisabled(1)
