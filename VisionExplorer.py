@@ -8,7 +8,7 @@ from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider)
                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
@@ -27,11 +27,9 @@ class Window(QMainWindow):
             return False
 
     def mouseDoubleClickEvent(self, event):
-        # if self.active_widget is not None:
-        #     self.active_widget.setStyleSheet("border:0px solid black")
         if self.pause.isEnabled():
-            
             return
+
         else:
             widget = self.childAt(event.position().x(),event.position().y())
             widgets = self.contentwidget.findChildren(QLabel)
@@ -85,6 +83,7 @@ class Window(QMainWindow):
         self.playback_mode = 'idle'
         self.rubberBand = None
         self.total_frames = None
+        self.frame_rate = 25
         
 
          
@@ -162,6 +161,7 @@ class Window(QMainWindow):
         disabledForeground = "red"
         disabledColor = color
         bold = "bold"
+        button_style = ":enabled { color: " + foreground + "; background-color: " + color + "; font-weight:  " + bold + " } :disabled { color: " + disabledForeground + "; background-color: " + disabledColor + "; font-weight:  " + bold + " }"
 
 
         self.bottomlayout.deleteLater()
@@ -177,35 +177,25 @@ class Window(QMainWindow):
         self.play = QPushButton("Play")
         self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
         self.play.setCheckable(True)
-        self.play.setStyleSheet(":enabled { color: " + foreground 
-                             + "; background-color: " + color
-                             + "; font-weight:  " + bold
-                             + " } :disabled { color: " + disabledForeground 
-                             + "; background-color: " + disabledColor 
-                             + "; font-weight:  " + bold + " }")
+        self.play.setStyleSheet(button_style)
         self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
 
         self.pause = QPushButton("Pause")
         self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
         self.pause.setCheckable(True)
-        self.pause.setStyleSheet(":enabled { color: " + foreground 
-                             + "; background-color: " + color
-                             + "; font-weight:  " + bold
-                             + " } :disabled { color: " + disabledForeground 
-                             + "; background-color: " + disabledColor 
-                             + "; font-weight:  " + bold + " }")
+        self.pause.setStyleSheet(button_style)
         self.pause.clicked.connect(lambda:self.pauseButtonClicked())
 
         self.rewind = QPushButton("Rewind")
         self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
         self.rewind.setCheckable(True)
-        self.rewind.setStyleSheet(":enabled { color: " + foreground 
-                             + "; background-color: " + color
-                             + "; font-weight:  " + bold
-                             + " } :disabled { color: " + disabledForeground 
-                             + "; background-color: " + disabledColor 
-                             + "; font-weight:  " + bold + " }")
+        self.rewind.setStyleSheet(button_style)
         self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
+
+        self.delay = QSlider(Qt.Horizontal)
+        self.delay.setRange(25,1000)
+        self.delay.setSingleStep(25)
+        self.delay.sliderMoved.connect(self.slider_position)
 
         self.contentwidget.setLayout(self.scroll_layout)
         
@@ -216,6 +206,7 @@ class Window(QMainWindow):
         self.bottomlayout.addWidget(self.rewind)
         self.bottomlayout.addWidget(self.pause)
         self.bottomlayout.addWidget(self.play)
+        self.bottomlayout.addWidget(self.delay)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
     
@@ -228,6 +219,7 @@ class Window(QMainWindow):
         self.play.deleteLater()
         self.pause.deleteLater()
         self.rewind.deleteLater()
+        self.delay.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
@@ -239,6 +231,9 @@ class Window(QMainWindow):
         self.pause.setCheckable(True)
         self.rewind = QPushButton()
         self.rewind.setCheckable(True)
+        self.delay = QSlider(Qt.Horizontal)
+        self.delay.setRange(25,1000)
+        self.delay.setSingleStep(25)
         self.contentwidget.setLayout(self.scroll_layout)
 
     def dragEnterEvent(self, e):
@@ -258,6 +253,8 @@ class Window(QMainWindow):
                 self.table.setItem(0,0,QTableWidgetItem(fname))  
         else:
             e.ignore()
+    def slider_position(self,p):
+        self.frame_rate = p
 
     @Slot()
     def closeEvent(self,event):
@@ -347,7 +344,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'playing'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot(100, lambda:self.playButtonClicked(i))
+                QTimer.singleShot(self.frame_rate, lambda:self.playButtonClicked(i))
 
             elif i == self.total_frames-1:
                 self.play.setDisabled(1)
@@ -385,7 +382,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'rewind'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot(100, lambda:self.rewindButtonClicked(i))
+                QTimer.singleShot(self.frame_rate, lambda:self.rewindButtonClicked(i))
 
             elif i == 0:
                 self.rewind.setDisabled(1)
