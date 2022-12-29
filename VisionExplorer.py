@@ -27,39 +27,53 @@ class Window(QMainWindow):
             return False
 
     def mouseDoubleClickEvent(self, event):
-        if self.active_widget is not None:
-            self.active_widget.setStyleSheet("border:0px solid black")
-        widget = self.childAt(event.position().x(),event.position().y())
-        widgets = self.contentwidget.findChildren(QLabel)
-        
-        if widget is not None and widget.objectName():
-            self.playback_mode = 'idle'
-            self.active_widget = widget
-            self.th.set_file(self.table.item(0,0),widget.objectName())
-            widget.setStyleSheet("border: 5px solid green;")
-            for w in widgets:
-                if w.objectName() != self.active_widget.objectName():
-                    w.setStyleSheet("border:0px solid black")
-        if int(self.active_widget.objectName()) != self.total_frames:
-            self.play.setDisabled(0)
-            self.play.setCheckable(1)
-        if int(self.active_widget.objectName()) != 0:
-            self.rewind.setDisabled(0)
-            self.rewind.setCheckable(1)
+        # if self.active_widget is not None:
+        #     self.active_widget.setStyleSheet("border:0px solid black")
+        if self.pause.isEnabled():
+            
+            return
+        else:
+            widget = self.childAt(event.position().x(),event.position().y())
+            widgets = self.contentwidget.findChildren(QLabel)
+            
+            if widget is not None and widget.objectName():
+                self.playback_mode = 'idle'
+                self.active_widget = widget
+                self.th.set_file(self.table.item(0,0),widget.objectName())
+                widget.setStyleSheet("border: 5px solid green;")
+                for w in widgets:
+                    if w.objectName() != self.active_widget.objectName():
+                        w.setStyleSheet("border:0px solid black")
+                if int(self.active_widget.objectName()) == self.total_frames-1:
+                    self.play.setDisabled(1)
+                    self.play.setCheckable(0)
+                    self.rewind.setDisabled(0)
+                    self.rewind.setCheckable(1)
+                if int(self.active_widget.objectName()) == 0:
+                    self.play.setDisabled(0)
+                    self.play.setCheckable(1)
+                    self.rewind.setDisabled(1)
+                    self.rewind.setCheckable(0)
 
-    def mousePressEvent(self, event):
-        if self.rubberBand:
-            self.rubberBand.hide()
-        widget = self.childAt(event.position().x(),event.position().y())
-        if widget.objectName() == 'MainScreen':
-            self.origin = QPoint(event.position().x(),event.position().y())
-            if not self.rubberBand:
-                self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
-            self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-            self.rubberBand.show()
+                if int(self.active_widget.objectName()) != self.total_frames-1 and int(self.active_widget.objectName()) != 0:
+                    self.play.setDisabled(0)
+                    self.play.setCheckable(1)
+                    self.rewind.setDisabled(0)
+                    self.rewind.setCheckable(1)
 
-    def mouseMoveEvent(self, event):
-        self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
+    # def mousePressEvent(self, event):
+    #     if self.rubberBand:
+    #         self.rubberBand.hide()
+    #     widget = self.childAt(event.position().x(),event.position().y())
+    #     if widget.objectName() == 'MainScreen':
+    #         self.origin = QPoint(event.position().x(),event.position().y())
+    #         if not self.rubberBand:
+    #             self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
+    #         self.rubberBand.setGeometry(QRect(self.origin, QSize()))
+    #         self.rubberBand.show()
+
+    # def mouseMoveEvent(self, event):
+    #     self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
     
     def __init__(self):
         # super().__init__()
@@ -238,6 +252,7 @@ class Window(QMainWindow):
         if e.mimeData().hasUrls() and not self.scrollth.isRunning():
             e.accept()
             urls = e.mimeData().urls()
+
             for url in urls:
                 fname = url.toLocalFile()
                 self.table.setItem(0,0,QTableWidgetItem(fname))  
@@ -258,7 +273,6 @@ class Window(QMainWindow):
     
     @Slot()
     def set_source(self):
-
         if self.table.item(0,0) and not self.scrollth.isRunning():
             self.th.set_file(self.table.item(0,0),0)
         if self.table.item(0,0).text().lower().endswith('.mp4') or os.path.isdir(self.table.item(0,0).text()):
@@ -304,7 +318,7 @@ class Window(QMainWindow):
         else:
             
             self.play.setEnabled(1)
-            self.pause.setEnabled(1)
+            self.pause.setEnabled(0)
             self.table.setEnabled(1)
             self.progressDialog.hide()
 
@@ -338,6 +352,8 @@ class Window(QMainWindow):
             elif i == self.total_frames-1:
                 self.play.setDisabled(1)
                 self.play.setCheckable(0)
+                self.pause.setDisabled(1)
+                self.pause.setCheckable(0)
                 self.playback_mode == 'idle'
             else:
                 self.play.setDisabled(0)
@@ -374,6 +390,8 @@ class Window(QMainWindow):
             elif i == 0:
                 self.rewind.setDisabled(1)
                 self.rewind.setCheckable(0)
+                self.pause.setDisabled(1)
+                self.pause.setCheckable(0)
                 self.playback_mode == 'idle'
             else:
                 self.rewind.setDisabled(0)
