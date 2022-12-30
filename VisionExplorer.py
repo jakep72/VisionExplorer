@@ -4,7 +4,7 @@ import time
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
-from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
+from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
@@ -40,8 +40,9 @@ class Window(QMainWindow):
                 self.th.set_file(self.table.item(0,0),widget.objectName())
                 widget.setStyleSheet("border: 5px solid green;")
                 for w in widgets:
-                    if w.objectName() != self.active_widget.objectName():
-                        w.setStyleSheet("border:0px solid black")
+                    if w.objectName():
+                        if w.objectName() != self.active_widget.objectName():
+                            w.setStyleSheet("border:0px solid black")
                 if int(self.active_widget.objectName()) == self.total_frames-1:
                     self.play.setDisabled(1)
                     self.play.setCheckable(0)
@@ -125,7 +126,7 @@ class Window(QMainWindow):
         leftlayout = QVBoxLayout()
         leftlayout.addWidget(self.label)
         leftlayout.addWidget(self.poslabel)
-        leftlayout.setContentsMargins(0,0,0,0)
+        leftlayout.setContentsMargins(75,0,0,0)
         leftlayout.setSpacing(5)
         leftlayout.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
         
@@ -136,11 +137,12 @@ class Window(QMainWindow):
         rightlayout.addWidget(self.table)
         toplayout.addLayout(leftlayout)
         toplayout.addLayout(rightlayout)
-        toplayout.setSpacing(150)
+        toplayout.setSpacing(75)
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
+        self.pb_widget = QWidget()
         self.scroll_layout = QHBoxLayout()
         self.playback_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
@@ -166,14 +168,14 @@ class Window(QMainWindow):
         button_style = ":enabled { color: " + foreground + "; background-color: " + color + "; font-weight:  " + bold + " } :disabled { color: " + disabledForeground + "; background-color: " + disabledColor + "; font-weight:  " + bold + " }"
 
         delay_style = 'QSlider::groove:horizontal {\
-                        border: 1px solid #999999;\
+                        border: 1px solid gray;\
                         height: 8px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */\
                         background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);\
                         margin: 2px 0;\
                         }\
                         QSlider::handle:horizontal {\
                             background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f);\
-                            border: 1px solid #5c5c5c;\
+                            border: 1px solid black;\
                             width: 18px;\
                             margin: -2px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */\
                             border-radius: 3px;\
@@ -185,13 +187,22 @@ class Window(QMainWindow):
         self.scroll_layout.deleteLater()
         self.playback_layout.deleteLater()
         self.button_layout.deleteLater()
+        self.pb_widget.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
+        self.pb_widget = QWidget()
         self.scroll_layout = QHBoxLayout()
         self.playback_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+
+        self.pb_title = QLabel()
+        self.pb_title.setText("Frame Review")
+        self.pb_title.setMaximumWidth(250)
+        self.pb_title.setMaximumHeight(10)
+        self.pb_title.setAlignment(Qt.AlignCenter)
+        self.pb_title.setStyleSheet("color:gray;font-weight:bold")
 
         self.play = QPushButton("Play")
         self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
@@ -213,25 +224,42 @@ class Window(QMainWindow):
 
         self.delay = QSlider(Qt.Horizontal)
         self.delay.setStyleSheet(delay_style)
-        self.delay.setRange(1,100)
-        self.delay.setSingleStep(5)
+        self.delay.setRange(1,50)
+        self.delay.setSliderPosition(self.frame_rate)
+        self.delay.setSingleStep(1)
         self.delay.setMaximumWidth(250)
         self.delay.sliderMoved.connect(self.slider_position)
 
+        self.fr_display = QLabel()
+        self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
+        self.fr_display.setMaximumWidth(250)
+        self.fr_display.setMaximumHeight(10)
+        self.fr_display.setAlignment(Qt.AlignCenter)
+        self.fr_display.setStyleSheet("color:gray;font-weight:bold")
+
         self.contentwidget.setLayout(self.scroll_layout)
+        self.pb_widget.setObjectName("pbwidget")
+        self.pb_widget.setLayout(self.playback_layout)
+        self.pb_widget.setFixedHeight(160)
+        self.pb_widget.setFixedWidth(250)
+        self.pb_widget.setStyleSheet("QWidget#pbwidget {border:1px solid white}")
         
+        self.scrollArea.setObjectName("scrollarea")
         self.scrollArea.setWidget(self.contentwidget)
         self.scrollArea.setFixedHeight(160)
         self.scrollArea.setWidgetResizable(True)
+        self.scrollArea.setStyleSheet("QWidget#scrollarea {border:1px solid white}")
         
         self.button_layout.addWidget(self.rewind)
         self.button_layout.addWidget(self.pause)
         self.button_layout.addWidget(self.play)
 
+        self.playback_layout.addWidget(self.pb_title)
         self.playback_layout.addLayout(self.button_layout)
         self.playback_layout.addWidget(self.delay)
+        self.playback_layout.addWidget(self.fr_display)
 
-        self.bottomlayout.addLayout(self.playback_layout)
+        self.bottomlayout.addWidget(self.pb_widget)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
     
@@ -243,17 +271,22 @@ class Window(QMainWindow):
         self.scroll_layout.deleteLater()
         self.playback_layout.deleteLater()
         self.button_layout.deleteLater()
+        self.pb_title.deleteLater()
         self.play.deleteLater()
         self.pause.deleteLater()
         self.rewind.deleteLater()
         self.delay.deleteLater()
+        self.fr_display.deleteLater()
+        self.pb_widget.deleteLater()
 
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
+        self.pb_widget = QWidget()
         self.scroll_layout = QHBoxLayout()
         self.playback_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+        self.pb_title = QLabel()
         self.play = QPushButton()
         self.play.setCheckable(True)
         self.pause = QPushButton()
@@ -261,9 +294,10 @@ class Window(QMainWindow):
         self.rewind = QPushButton()
         self.rewind.setCheckable(True)
         self.delay = QSlider(Qt.Horizontal)
-        self.delay.setRange(25,1000)
-        self.delay.setSingleStep(25)
+        self.delay.setSliderPosition(self.frame_rate)
+        self.fr_display = QLabel()
         self.contentwidget.setLayout(self.scroll_layout)
+        self.pb_widget.setLayout(self.playback_layout)
 
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls() and not self.scrollth.isRunning():
@@ -284,6 +318,7 @@ class Window(QMainWindow):
             e.ignore()
     def slider_position(self,p):
         self.frame_rate = p
+        self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
 
     @Slot()
     def closeEvent(self,event):
@@ -321,6 +356,9 @@ class Window(QMainWindow):
     @Slot(QImage)
     def setScrollImage(self,data):       
         self.slabel=QLabel()
+        self.flabel = VerticalLabel()
+        self.flabel.setStyleSheet("color:white;font-weight:bold")
+        self.flabel.setText("Frame " +str(data[1]))
         self.slabel.setObjectName(str(data[1]))
         self.slabel.setFixedSize(160, 120)
         self.slabel.setPixmap(QPixmap.fromImage(data[0]))
@@ -329,6 +367,7 @@ class Window(QMainWindow):
             self.progressDialog = QProgressDialog("Loading Images..", None, 0, data[2], self)
             self.progressDialog.setWindowTitle(" ")
             self.slabel.setStyleSheet("border: 5px solid green;")
+        self.contentwidget.layout().addWidget(self.flabel)
         self.contentwidget.layout().addWidget(self.slabel)
         self.prog_update(data[1])
         self.total_frames = data[2]
@@ -358,8 +397,9 @@ class Window(QMainWindow):
         self.scrollArea.ensureWidgetVisible(self.active_widget)
         widgets = self.contentwidget.findChildren(QLabel)
         for w in widgets:
-            if w.objectName() != self.active_widget.objectName():
-                w.setStyleSheet("border:0px solid black")
+            if w.objectName():
+                if w.objectName() != self.active_widget.objectName():
+                    w.setStyleSheet("border:0px solid black")
                 
         if self.playback_mode == 'paused':
             self.play.setDisabled(0)
@@ -373,7 +413,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'playing'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot((1000/self.frame_rate), lambda:self.playButtonClicked(i))
+                QTimer.singleShot(int(1000/self.frame_rate), lambda:self.playButtonClicked(i))
 
             elif i == self.total_frames-1:
                 self.play.setDisabled(1)
@@ -396,8 +436,9 @@ class Window(QMainWindow):
         self.scrollArea.ensureWidgetVisible(self.active_widget)
         widgets = self.contentwidget.findChildren(QLabel)
         for w in widgets:
-            if w.objectName() != self.active_widget.objectName():
-                w.setStyleSheet("border:0px solid black")
+            if w.objectName():
+                if w.objectName() != self.active_widget.objectName():
+                    w.setStyleSheet("border:0px solid black")
                 
         if self.playback_mode == 'paused':
             self.rewind.setDisabled(0)
@@ -411,7 +452,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'rewind'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
-                QTimer.singleShot((1000/self.frame_rate), lambda:self.rewindButtonClicked(i))
+                QTimer.singleShot(int(1000/self.frame_rate), lambda:self.rewindButtonClicked(i))
 
             elif i == 0:
                 self.rewind.setDisabled(1)
@@ -432,12 +473,38 @@ class Window(QMainWindow):
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
         for w in widgets:
-            if w.objectName() != self.active_widget.objectName():
-                w.setStyleSheet("border:0px solid black")
+            if w.objectName():
+                if w.objectName() != self.active_widget.objectName():
+                    w.setStyleSheet("border:0px solid black")
         self.playback_mode = 'paused'
 
             
-            
+class VerticalLabel(QLabel):
+
+    def __init__(self, *args):
+        QLabel.__init__(self, *args)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.translate(0, self.height())
+        painter.rotate(-90)
+        # calculate the size of the font
+        fm = QFontMetrics(painter.font())
+        xoffset = int(fm.boundingRect(self.text()).width()/2)
+        yoffset = int(fm.boundingRect(self.text()).height()/2)
+        x = int(self.width()/2) + yoffset
+        y = int(self.height()/2) - xoffset
+        # because we rotated the label, x affects the vertical placement, and y affects the horizontal
+        painter.drawText(y, x, self.text())
+        painter.end()
+        
+    def minimumSizeHint(self):
+        size = QLabel.minimumSizeHint(self)
+        return QSize(size.height(), size.width())
+
+    def sizeHint(self):
+        size = QLabel.sizeHint(self)
+        return QSize(size.height(), size.width())            
         
 
 if __name__ == "__main__":
@@ -445,3 +512,4 @@ if __name__ == "__main__":
     w = Window()
     w.show()
     sys.exit(app.exec())
+
