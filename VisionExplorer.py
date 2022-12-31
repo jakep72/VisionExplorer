@@ -149,6 +149,8 @@ class Window(QMainWindow):
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
+
+        self.create_scroll_layout()
         
 
         # Central widget
@@ -206,19 +208,22 @@ class Window(QMainWindow):
 
         self.play = QPushButton("Play")
         self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
-        self.play.setCheckable(True)
+        self.play.setCheckable(False)
+        self.play.setDisabled(True)
         self.play.setStyleSheet(button_style)
         self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
 
         self.pause = QPushButton("Pause")
         self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
-        self.pause.setCheckable(True)
+        self.pause.setCheckable(False)
+        self.pause.setDisabled(True)
         self.pause.setStyleSheet(button_style)
         self.pause.clicked.connect(lambda:self.pauseButtonClicked())
 
         self.rewind = QPushButton("Rewind")
         self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
-        self.rewind.setCheckable(True)
+        self.rewind.setCheckable(False)
+        self.rewind.setDisabled(True)
         self.rewind.setStyleSheet(button_style)
         self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
 
