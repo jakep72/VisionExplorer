@@ -40,11 +40,11 @@ class Thread(QThread):
                         continue
         
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    frame = cv2.resize(frame,(640,480))
+                    # frame = cv2.resize(frame,(640,480))
 
                     h, w, ch = frame.shape
                     img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                    # scaled_img = img.scaled(640, 480, Qt.KeepAspectRatio)
+                    img = img.scaled(640, 480)
                     
                     
                     self.updateFrame.emit(img)
@@ -68,10 +68,11 @@ class Thread(QThread):
                         ret,frame = cap.read()
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         # cv2.putText(frame,"frame #"+str(i+1),(75,75),cv2.FONT_HERSHEY_COMPLEX,4,(255,255,255),6)
-                        frame = cv2.resize(frame,(640,480))
+                        # frame = cv2.resize(frame,(640,480))
 
                         h, w, ch = frame.shape
                         img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                        img = img.scaled(640, 480)
                         self.updateFrame.emit(img)
             else:
                 pass

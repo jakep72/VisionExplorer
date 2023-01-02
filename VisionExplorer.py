@@ -4,12 +4,13 @@ import time
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
-from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics
+from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
                                QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider)
-                   
+#https://icons8.com
+#                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
         if str(event.type()) == 'Type.HoverMove' and self.active_widget is not None:
@@ -206,38 +207,49 @@ class Window(QMainWindow):
         self.pb_title.setAlignment(Qt.AlignCenter)
         self.pb_title.setStyleSheet("color:gray;font-weight:bold")
 
-        self.play = QPushButton("Play")
-        self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
+        self.play = QPushButton()
+        # self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
+        self.play.setIcon(QIcon('assets/play2.png'))
         self.play.setCheckable(False)
         self.play.setDisabled(True)
         self.play.setStyleSheet(button_style)
         self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
 
-        self.pause = QPushButton("Pause")
-        self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
+        self.pause = QPushButton()
+        # self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
+        self.pause.setIcon(QIcon('assets/pause2.png'))
         self.pause.setCheckable(False)
         self.pause.setDisabled(True)
         self.pause.setStyleSheet(button_style)
         self.pause.clicked.connect(lambda:self.pauseButtonClicked())
 
-        self.rewind = QPushButton("Rewind")
-        self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
+        self.rewind = QPushButton()
+        # self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
+        self.rewind.setIcon(QIcon('assets/rewind2.png'))
         self.rewind.setCheckable(False)
         self.rewind.setDisabled(True)
         self.rewind.setStyleSheet(button_style)
         self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
+
+        self.record = QPushButton()
+        # self.record.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
+        self.record.setIcon(QIcon('assets/record2.png'))
+        self.record.setCheckable(False)
+        self.record.setDisabled(True)
+        self.record.setStyleSheet(button_style)
+        self.record.clicked.connect(lambda:self.recordButtonClicked(int(self.active_widget.objectName())))
 
         self.delay = QSlider(Qt.Horizontal)
         self.delay.setStyleSheet(delay_style)
         self.delay.setRange(1,50)
         self.delay.setSliderPosition(self.frame_rate)
         self.delay.setSingleStep(1)
-        self.delay.setMaximumWidth(250)
+        self.delay.setMaximumWidth(275)
         self.delay.sliderMoved.connect(self.slider_position)
 
         self.fr_display = QLabel()
         self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
-        self.fr_display.setMaximumWidth(250)
+        self.fr_display.setMaximumWidth(275)
         self.fr_display.setMaximumHeight(10)
         self.fr_display.setAlignment(Qt.AlignCenter)
         self.fr_display.setStyleSheet("color:gray;font-weight:bold")
@@ -246,7 +258,7 @@ class Window(QMainWindow):
         self.pb_widget.setObjectName("pbwidget")
         self.pb_widget.setLayout(self.playback_layout)
         self.pb_widget.setFixedHeight(160)
-        self.pb_widget.setFixedWidth(250)
+        self.pb_widget.setFixedWidth(275)
         self.pb_widget.setStyleSheet("QWidget#pbwidget {border:1px solid white}")
         
         self.scrollArea.setObjectName("scrollarea")
@@ -258,6 +270,7 @@ class Window(QMainWindow):
         self.button_layout.addWidget(self.rewind)
         self.button_layout.addWidget(self.pause)
         self.button_layout.addWidget(self.play)
+        self.button_layout.addWidget(self.record)
 
         self.playback_layout.addWidget(self.pb_title)
         self.playback_layout.addLayout(self.button_layout)
@@ -280,6 +293,7 @@ class Window(QMainWindow):
         self.play.deleteLater()
         self.pause.deleteLater()
         self.rewind.deleteLater()
+        self.record.deleteLater()
         self.delay.deleteLater()
         self.fr_display.deleteLater()
         self.pb_widget.deleteLater()
@@ -298,6 +312,8 @@ class Window(QMainWindow):
         self.pause.setCheckable(True)
         self.rewind = QPushButton()
         self.rewind.setCheckable(True)
+        self.record = QPushButton()
+        self.record.setCheckable(True)
         self.delay = QSlider(Qt.Horizontal)
         self.delay.setSliderPosition(self.frame_rate)
         self.fr_display = QLabel()
@@ -321,6 +337,7 @@ class Window(QMainWindow):
                 self.table.setItem(0,0,QTableWidgetItem(fname))  
         else:
             e.ignore()
+
     def slider_position(self,p):
         self.frame_rate = p
         self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
@@ -357,6 +374,7 @@ class Window(QMainWindow):
     @Slot(QImage)
     def setImage(self, image):
         self.label.setPixmap(QPixmap.fromImage(image))
+        self.label.pixmap().save('test32.jpg')
 
     @Slot(QImage)
     def setScrollImage(self,data):       
