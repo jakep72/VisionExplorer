@@ -1,6 +1,7 @@
 import sys
 import os
 import time
+import datetime
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
@@ -86,6 +87,8 @@ class Window(QMainWindow):
         self.rubberBand = None
         self.total_frames = None
         self.frame_rate = 1
+        self.recording = False
+        self.image_dir = None
         
 
          
@@ -237,7 +240,7 @@ class Window(QMainWindow):
         self.record.setCheckable(False)
         self.record.setDisabled(True)
         self.record.setStyleSheet(button_style)
-        self.record.clicked.connect(lambda:self.recordButtonClicked(int(self.active_widget.objectName())))
+        self.record.clicked.connect(lambda:self.recordButtonClicked())
 
         self.delay = QSlider(Qt.Horizontal)
         self.delay.setStyleSheet(delay_style)
@@ -374,7 +377,7 @@ class Window(QMainWindow):
     @Slot(QImage)
     def setImage(self, image):
         self.label.setPixmap(QPixmap.fromImage(image))
-        self.label.pixmap().save('test32.jpg')
+        # self.label.pixmap().save('test32.jpg')
 
     @Slot(QImage)
     def setScrollImage(self,data):       
@@ -401,12 +404,14 @@ class Window(QMainWindow):
             self.play.setDisabled(1)
             self.pause.setDisabled(1)
             self.rewind.setDisabled(1)
+            self.record.setDisabled(1)
             self.progressDialog.setValue(frame)
             self.progressDialog.show()
         else:
             
             self.play.setEnabled(1)
             self.pause.setEnabled(0)
+            self.record.setEnabled(1)
             self.table.setEnabled(1)
             self.progressDialog.hide()
 
@@ -437,6 +442,8 @@ class Window(QMainWindow):
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
                 QTimer.singleShot(int(1000/self.frame_rate), lambda:self.playButtonClicked(i))
+                if self.recording:
+                    self.saveImages(self.image_dir,i)
 
             elif i == self.total_frames-1:
                 self.play.setDisabled(1)
@@ -476,6 +483,8 @@ class Window(QMainWindow):
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
                 QTimer.singleShot(int(1000/self.frame_rate), lambda:self.rewindButtonClicked(i))
+                if self.recording:
+                    self.saveImages(self.image_dir,i)
 
             elif i == 0:
                 self.rewind.setDisabled(1)
@@ -501,7 +510,21 @@ class Window(QMainWindow):
                     w.setStyleSheet("border:0px solid black")
         self.playback_mode = 'paused'
 
-            
+    def saveImages(self,dir,i):
+        self.label.pixmap().save(os.path.join(dir,'frame'+str(i)+'.jpg'))
+
+    def recordButtonClicked(self):
+        if not self.recording:
+            self.recording = True
+            self.record.setStyleSheet("background-color:red")
+            self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+            os.makedirs(self.image_dir)
+        else:
+            self.recording = False
+            self.record.setStyleSheet("background-color:gray")
+
+
+
 class VerticalLabel(QLabel):
 
     def __init__(self, *args):
