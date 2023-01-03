@@ -4,6 +4,7 @@ import time
 import datetime
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
+from LiveRecordThread import LiveRecord
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
@@ -89,6 +90,8 @@ class Window(QMainWindow):
         self.frame_rate = 1
         self.recording = False
         self.image_dir = None
+        self.master_mode = 'live'
+        self.saveTimer = QTimer()
         
 
          
@@ -373,6 +376,8 @@ class Window(QMainWindow):
             self.scrollth.quit()
             time.sleep(1)
             self.clear_scroll_layout()
+            self.create_scroll_layout()
+            self.record.setEnabled(1)
 
     @Slot(QImage)
     def setImage(self, image):
@@ -514,16 +519,34 @@ class Window(QMainWindow):
         self.label.pixmap().save(os.path.join(dir,'frame'+str(i)+'.jpg'))
 
     def recordButtonClicked(self):
-        if not self.recording:
-            self.recording = True
-            self.record.setStyleSheet("background-color:red")
-            self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-            os.makedirs(self.image_dir)
+        if self.master_mode == 'live':
+            if not self.saveTimer.isActive():
+                # write video
+                self.record.setStyleSheet("background-color:red")
+                self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+                os.makedirs(self.image_dir)
+                self.saveTimer.start()
+                self.th2 = LiveRecord(self)
+                self.th2.set_dir(self.label,self.image_dir,1/self.frame_rate)
+                self.th2.active = True                                
+                self.th2.start()
+
+            else:
+                # stop writing
+                self.record.setStyleSheet("background-color:gray")
+                self.saveTimer.stop()
+                self.th2.active = False                                           
+                self.th2.terminate()                    
+        
         else:
-            self.recording = False
-            self.record.setStyleSheet("background-color:gray")
-
-
+            if not self.recording:
+                self.recording = True
+                self.record.setStyleSheet("background-color:red")
+                self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+                os.makedirs(self.image_dir)
+            else:
+                self.recording = False
+                self.record.setStyleSheet("background-color:gray")     
 
 class VerticalLabel(QLabel):
 
@@ -534,13 +557,11 @@ class VerticalLabel(QLabel):
         painter = QPainter(self)
         painter.translate(0, self.height())
         painter.rotate(-90)
-        # calculate the size of the font
         fm = QFontMetrics(painter.font())
         xoffset = int(fm.boundingRect(self.text()).width()/2)
         yoffset = int(fm.boundingRect(self.text()).height()/2)
         x = int(self.width()/2) + yoffset
         y = int(self.height()/2) - xoffset
-        # because we rotated the label, x affects the vertical placement, and y affects the horizontal
         painter.drawText(y, x, self.text())
         painter.end()
         
