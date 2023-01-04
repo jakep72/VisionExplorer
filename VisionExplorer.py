@@ -16,12 +16,6 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
 class Window(QMainWindow):
     def eventFilter(self, object, event):
         if str(event.type()) == 'Type.HoverMove' and self.active_widget is not None:
-            # try:
-            #     self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-            #     self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
-            # except RuntimeError:
-            #     self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-            #     self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
             self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
             self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
             return True
@@ -87,6 +81,7 @@ class Window(QMainWindow):
 
     def enableLiveMode(self):
         if self.master_mode == 'offline':
+            self.record.setEnabled(1)
             self.master_mode = 'live'
             self.mode_label.setText('Live')
             self.mode_label.setStyleSheet('color:green')
@@ -95,6 +90,7 @@ class Window(QMainWindow):
             QTimer.singleShot(5000,self.enableWindow)
             
         elif self.master_mode == 'live':
+            self.record.setEnabled(0)
             self.master_mode = 'offline'
             self.mode_label.setText('Offline')
             self.mode_label.setStyleSheet('color:red')
@@ -119,6 +115,9 @@ class Window(QMainWindow):
         self.image_dir = None
         self.master_mode = 'offline'
         self.saveTimer = QTimer()
+        self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
+        self.vid_formats = ('.mp4','.avi','.mov','.wmv')
+        self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
   
         
 
@@ -142,14 +141,16 @@ class Window(QMainWindow):
         self.toolbar.setIconSize(QSize(16,16))
         self.addToolBar(self.toolbar)
 
-        button_action = QAction(QIcon('assets/play2.png'),'&Mode',self)
-        button_action.setStatusTip("Enable/Disable Live Mode")
-        button_action.triggered.connect(self.enableLiveMode)
-        self.toolbar.addAction(button_action)
+        self.mode_button = QAction(QIcon('assets/play2.png'),'&Mode',self)
+        self.mode_button.setStatusTip("Enable/Disable Live Mode")
+        self.mode_button.triggered.connect(self.enableLiveMode)
+        self.toolbar.addAction(self.mode_button)
+        
         
         self.mode_label = QLabel('Offline')
         self.mode_label.setStyleSheet('color:red')
         self.toolbar.addWidget(self.mode_label)
+        self.mode_button.setDisabled(1)
 
 
         # Create a label for the display camera
@@ -256,7 +257,6 @@ class Window(QMainWindow):
         self.pb_title.setStyleSheet("color:gray;font-weight:bold")
 
         self.play = QPushButton()
-        # self.play.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekForward))
         self.play.setIcon(QIcon('assets/play2.png'))
         self.play.setCheckable(False)
         self.play.setDisabled(True)
@@ -264,7 +264,6 @@ class Window(QMainWindow):
         self.play.clicked.connect(lambda:self.playButtonClicked(int(self.active_widget.objectName())))
 
         self.pause = QPushButton()
-        # self.pause.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaPause))
         self.pause.setIcon(QIcon('assets/pause2.png'))
         self.pause.setCheckable(False)
         self.pause.setDisabled(True)
@@ -272,7 +271,6 @@ class Window(QMainWindow):
         self.pause.clicked.connect(lambda:self.pauseButtonClicked())
 
         self.rewind = QPushButton()
-        # self.rewind.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
         self.rewind.setIcon(QIcon('assets/rewind2.png'))
         self.rewind.setCheckable(False)
         self.rewind.setDisabled(True)
@@ -280,7 +278,6 @@ class Window(QMainWindow):
         self.rewind.clicked.connect(lambda:self.rewindButtonClicked(int(self.active_widget.objectName())))
 
         self.record = QPushButton()
-        # self.record.setIcon(QApplication.style().standardIcon(QStyle.SP_MediaSeekBackward))
         self.record.setIcon(QIcon('assets/record2.png'))
         self.record.setCheckable(False)
         self.record.setDisabled(True)
@@ -383,7 +380,6 @@ class Window(QMainWindow):
             for url in urls:
                 fname = url.toLocalFile()
                 self.table.setItem(0,0,QTableWidgetItem(fname))  
-                # self.th.set_file(self.table.item(0,0),0,self.master_mode)
         else:
             e.ignore()
 
@@ -409,8 +405,9 @@ class Window(QMainWindow):
             self.th.set_file(self.table.item(0,0),0,self.master_mode)
 
             
-        if self.table.item(0,0).text().lower().endswith('.mp4') or os.path.isdir(self.table.item(0,0).text()):
+        if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
             self.active_widget = None
+            self.mode_button.setDisabled(1)
             self.scrollth.quit()
             time.sleep(1)
             self.create_scroll_layout()
@@ -419,11 +416,12 @@ class Window(QMainWindow):
                 
         else:
             self.active_widget = None
+            self.mode_button.setDisabled(0)
             self.scrollth.quit()
             time.sleep(1)
             self.clear_scroll_layout()
             self.create_scroll_layout()
-            self.record.setEnabled(1)
+            self.record.setEnabled(0)
 
     @Slot(QImage)
     def setImage(self, image):
@@ -452,14 +450,19 @@ class Window(QMainWindow):
         
         elif self.master_mode == 'live':
             self.slabel=QLabel()
-            self.flabel = VerticalLabel()
-            self.flabel.setStyleSheet("color:white;font-weight:bold")
-            self.flabel.setText("Frame " +str(data[1]))
             self.slabel.setObjectName(str(data[1]))
             self.slabel.setFixedSize(160, 120)
             self.slabel.setPixmap(data[0])
-            self.contentwidget.layout().addWidget(self.flabel)
             self.contentwidget.layout().addWidget(self.slabel)
+            
+            # self.active_widget = self.findChild(QWidget,str(data[1]))
+            # self.active_widget.setStyleSheet("border: 5px solid green;")
+            # self.scrollArea.ensureWidgetVisible(self.active_widget)
+            # widgets = self.contentwidget.findChildren(QLabel)
+            # for w in widgets:
+            #     if w.objectName():
+            #         if w.objectName() != self.active_widget.objectName():
+            #             w.setStyleSheet("border:0px solid black")
 
 
     def prog_update(self,frame):

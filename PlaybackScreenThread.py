@@ -17,12 +17,15 @@ class ScrollThread(QThread):
         self.image_source = None
         self.status = True
         self.cap = True
+        self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
+        self.vid_formats = ('.mp4','.avi','.mov','.wmv')
+        self.glob_formats = "*.jpg,*.bmp,*.jpe,*.jpeg,*.tif,*.tiff"
              
     def set_file(self, fname):
         self.image_source =  fname.text()
         
     def run(self):
-        if self.image_source.lower().endswith('.mp4'):
+        if self.image_source.lower().endswith(self.vid_formats):
             cap = cv2.VideoCapture(self.image_source)
             total_frames = cap.get(cv2.CAP_PROP_FRAME_COUNT)
             
@@ -44,12 +47,13 @@ class ScrollThread(QThread):
             self.quit()
 
         elif os.path.isdir(self.image_source):
-            total_frames = len(glob.glob1(self.image_source,"*.jpg"))
+            # total_frames = len([glob.glob1(self.image_source,e) for e in self.glob_formats][0])
+            total_frames = len([f for f_ in [glob.glob(os.path.join(self.image_source,e)) for e in self.glob_formats] for f in f_])
             i = 0
             for file in os.listdir(self.image_source):
                 path = os.path.join(self.image_source,file)
                 cap = cv2.VideoCapture(path)
-                if file.lower().endswith('.jpg'): # eg: '.txt'
+                if file.lower().endswith(self.img_formats):
                     cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     ret,frame = cap.read()
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
