@@ -1,10 +1,11 @@
 import os
 import time
-from PySide6.QtCore import QThread
+from PySide6.QtCore import QThread, Signal
 
 
 
 class LiveRecord(QThread):
+    updatescroll = Signal(list)
 
     def __init__(self, parent=None):
         QThread.__init__(self, parent)
@@ -17,7 +18,10 @@ class LiveRecord(QThread):
 
     def run(self):
         i = 0
-        while self.active:            
+        while self.active:
+            img = self.label.pixmap()
+            img = img.scaled(160, 120)        
             self.label.pixmap().save(os.path.join(self.dir,'frame'+str(i)+'.jpg'))
-            time.sleep(self.frame_rate) 
-            i+=1 
+            self.updatescroll.emit([img,i])
+            time.sleep(self.frame_rate)
+            i+=1

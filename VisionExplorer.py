@@ -10,12 +10,18 @@ from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPain
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar)
 #https://icons8.com
 #                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
         if str(event.type()) == 'Type.HoverMove' and self.active_widget is not None:
+            # try:
+            #     self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
+            #     self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
+            # except RuntimeError:
+            #     self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
+            #     self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
             self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
             self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
             return True
@@ -40,7 +46,7 @@ class Window(QMainWindow):
             if widget is not None and widget.objectName():
                 self.playback_mode = 'idle'
                 self.active_widget = widget
-                self.th.set_file(self.table.item(0,0),widget.objectName())
+                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode)
                 widget.setStyleSheet("border: 5px solid green;")
                 for w in widgets:
                     if w.objectName():
@@ -76,7 +82,28 @@ class Window(QMainWindow):
 
     # def mouseMoveEvent(self, event):
     #     self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
-    
+    def enableWindow(self):
+        self.window().setDisabled(0)
+
+    def enableLiveMode(self):
+        if self.master_mode == 'offline':
+            self.master_mode = 'live'
+            self.mode_label.setText('Live')
+            self.mode_label.setStyleSheet('color:green')
+            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+            self.window().setDisabled(1)
+            QTimer.singleShot(5000,self.enableWindow)
+            
+        elif self.master_mode == 'live':
+            self.master_mode = 'offline'
+            self.mode_label.setText('Offline')
+            self.mode_label.setStyleSheet('color:red')
+            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+            self.window().setDisabled(1)
+            QTimer.singleShot(5000,self.enableWindow)
+            
+            
+
     def __init__(self):
         # super().__init__()
         super(Window, self).__init__()
@@ -90,8 +117,9 @@ class Window(QMainWindow):
         self.frame_rate = 1
         self.recording = False
         self.image_dir = None
-        self.master_mode = 'live'
+        self.master_mode = 'offline'
         self.saveTimer = QTimer()
+  
         
 
          
@@ -110,10 +138,24 @@ class Window(QMainWindow):
                         triggered=qApp.aboutQt)
         self.menu_about.addAction(about)
 
+        self.toolbar = QToolBar()
+        self.toolbar.setIconSize(QSize(16,16))
+        self.addToolBar(self.toolbar)
+
+        button_action = QAction(QIcon('assets/play2.png'),'&Mode',self)
+        button_action.setStatusTip("Enable/Disable Live Mode")
+        button_action.triggered.connect(self.enableLiveMode)
+        self.toolbar.addAction(button_action)
+        
+        self.mode_label = QLabel('Offline')
+        self.mode_label.setStyleSheet('color:red')
+        self.toolbar.addWidget(self.mode_label)
+
+
         # Create a label for the display camera
         self.label = QLabel(self)
         self.label.setObjectName('MainScreen')
-        self.label.setFixedSize(640, 480)
+        self.label.setFixedSize(720, 480)
         self.label.setStyleSheet("background-color:black")
         self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.label.installEventFilter(self)
@@ -327,20 +369,21 @@ class Window(QMainWindow):
         self.pb_widget.setLayout(self.playback_layout)
 
     def dragEnterEvent(self, e):
-        if e.mimeData().hasUrls() and not self.scrollth.isRunning():
+        if e.mimeData().hasUrls() and not self.scrollth.isRunning() and self.master_mode != 'live':
             e.accept()
         else:
             e.ignore()
 
 
     def dropEvent(self, e):
-        if e.mimeData().hasUrls() and not self.scrollth.isRunning():
+        if e.mimeData().hasUrls() and not self.scrollth.isRunning() and self.master_mode != 'live':
             e.accept()
             urls = e.mimeData().urls()
 
             for url in urls:
                 fname = url.toLocalFile()
                 self.table.setItem(0,0,QTableWidgetItem(fname))  
+                # self.th.set_file(self.table.item(0,0),0,self.master_mode)
         else:
             e.ignore()
 
@@ -363,7 +406,9 @@ class Window(QMainWindow):
     @Slot()
     def set_source(self):
         if self.table.item(0,0) and not self.scrollth.isRunning():
-            self.th.set_file(self.table.item(0,0),0)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+
+            
         if self.table.item(0,0).text().lower().endswith('.mp4') or os.path.isdir(self.table.item(0,0).text()):
             self.active_widget = None
             self.scrollth.quit()
@@ -373,6 +418,7 @@ class Window(QMainWindow):
             self.scrollth.set_file(self.table.item(0,0))
                 
         else:
+            self.active_widget = None
             self.scrollth.quit()
             time.sleep(1)
             self.clear_scroll_layout()
@@ -382,26 +428,39 @@ class Window(QMainWindow):
     @Slot(QImage)
     def setImage(self, image):
         self.label.setPixmap(QPixmap.fromImage(image))
-        # self.label.pixmap().save('test32.jpg')
+        
 
     @Slot(QImage)
-    def setScrollImage(self,data):       
-        self.slabel=QLabel()
-        self.flabel = VerticalLabel()
-        self.flabel.setStyleSheet("color:white;font-weight:bold")
-        self.flabel.setText("Frame " +str(data[1]))
-        self.slabel.setObjectName(str(data[1]))
-        self.slabel.setFixedSize(160, 120)
-        self.slabel.setPixmap(QPixmap.fromImage(data[0]))
-        if self.slabel.objectName() == '0':
-            self.active_widget = self.slabel
-            self.progressDialog = QProgressDialog("Loading Images..", None, 0, data[2], self)
-            self.progressDialog.setWindowTitle(" ")
-            self.slabel.setStyleSheet("border: 5px solid green;")
-        self.contentwidget.layout().addWidget(self.flabel)
-        self.contentwidget.layout().addWidget(self.slabel)
-        self.prog_update(data[1])
-        self.total_frames = data[2]
+    def setScrollImage(self,data):
+        if self.master_mode == 'offline':      
+            self.slabel=QLabel()
+            self.flabel = VerticalLabel()
+            self.flabel.setStyleSheet("color:white;font-weight:bold")
+            self.flabel.setText("Frame " +str(data[1]))
+            self.slabel.setObjectName(str(data[1]))
+            self.slabel.setFixedSize(160, 120)
+            self.slabel.setPixmap(QPixmap.fromImage(data[0]))
+            if self.slabel.objectName() == '0':
+                self.active_widget = self.slabel
+                self.progressDialog = QProgressDialog("Loading Images..", None, 0, data[2], self)
+                self.progressDialog.setWindowTitle(" ")
+                self.slabel.setStyleSheet("border: 5px solid green;")
+            self.contentwidget.layout().addWidget(self.flabel)
+            self.contentwidget.layout().addWidget(self.slabel)
+            self.prog_update(data[1])
+            self.total_frames = data[2]
+        
+        elif self.master_mode == 'live':
+            self.slabel=QLabel()
+            self.flabel = VerticalLabel()
+            self.flabel.setStyleSheet("color:white;font-weight:bold")
+            self.flabel.setText("Frame " +str(data[1]))
+            self.slabel.setObjectName(str(data[1]))
+            self.slabel.setFixedSize(160, 120)
+            self.slabel.setPixmap(data[0])
+            self.contentwidget.layout().addWidget(self.flabel)
+            self.contentwidget.layout().addWidget(self.slabel)
+
 
     def prog_update(self,frame):
         if self.scrollth.isRunning():
@@ -413,7 +472,6 @@ class Window(QMainWindow):
             self.progressDialog.setValue(frame)
             self.progressDialog.show()
         else:
-            
             self.play.setEnabled(1)
             self.pause.setEnabled(0)
             self.record.setEnabled(1)
@@ -424,7 +482,7 @@ class Window(QMainWindow):
         i+=1
         self.play.setDisabled(1)
         self.play.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -465,7 +523,7 @@ class Window(QMainWindow):
         i-=1
         self.rewind.setDisabled(1)
         self.rewind.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -505,7 +563,7 @@ class Window(QMainWindow):
     def pauseButtonClicked(self):
         self.pause.setDisabled(1)
         self.pause.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()))
+        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()),self.master_mode)
         widgets = self.contentwidget.findChildren(QLabel)
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -527,6 +585,7 @@ class Window(QMainWindow):
                 os.makedirs(self.image_dir)
                 self.saveTimer.start()
                 self.th2 = LiveRecord(self)
+                self.th2.updatescroll.connect(self.setScrollImage)
                 self.th2.set_dir(self.label,self.image_dir,1/self.frame_rate)
                 self.th2.active = True                                
                 self.th2.start()
@@ -538,7 +597,7 @@ class Window(QMainWindow):
                 self.th2.active = False                                           
                 self.th2.terminate()                    
         
-        else:
+        elif self.master_mode == 'offline':
             if not self.recording:
                 self.recording = True
                 self.record.setStyleSheet("background-color:red")

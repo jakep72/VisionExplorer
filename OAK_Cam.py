@@ -14,7 +14,7 @@ def make_pipe():
     # Properties
     camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setVideoSize(640, 480)
+    camRgb.setVideoSize(720, 480)
 
     xoutVideo.input.setBlocking(False)
     xoutVideo.input.setQueueSize(1)
