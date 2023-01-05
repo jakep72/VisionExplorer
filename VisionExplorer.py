@@ -5,12 +5,13 @@ import datetime
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
+from findDevices import OAK_Devices, Webcam_Devices
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog)
 #https://icons8.com
 #                    
 class Window(QMainWindow):
@@ -88,6 +89,7 @@ class Window(QMainWindow):
             self.th.set_file(self.table.item(0,0),0,self.master_mode)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
+            self.table.setDisabled(1)
             
         elif self.master_mode == 'live':
             self.record.setEnabled(0)
@@ -97,8 +99,24 @@ class Window(QMainWindow):
             self.th.set_file(self.table.item(0,0),0,self.master_mode)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
-            
-            
+            self.table.setDisabled(0)
+
+    def web_found(self):
+        self.table.setItem(0,0,QTableWidgetItem('0'))
+
+
+    def oak_found(self,checked):
+        action = self.sender()
+        cam = action.text()
+        
+        if cam == 'Color Camera':
+           self.table.setItem(0,0,QTableWidgetItem('1'))
+        elif cam == 'Mono Left Camera':
+            self.table.setItem(0,0,QTableWidgetItem('2'))
+        elif cam == 'Mono Right Camera':
+            self.table.setItem(0,0,QTableWidgetItem('3'))
+        elif cam == 'Stereo':
+            self.table.setItem(0,0,QTableWidgetItem('4'))
 
     def __init__(self):
         # super().__init__()
@@ -118,24 +136,12 @@ class Window(QMainWindow):
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
+        self.webcam = Webcam_Devices()
+        self.oak = OAK_Devices()
   
-        
-
-         
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
         self.showMaximized()
-
-        # Main menu bar
-        self.menu = self.menuBar()
-        self.menu_file = self.menu.addMenu("File")
-        exit = QAction("Exit", self, triggered=qApp.quit)
-        self.menu_file.addAction(exit)
-
-        self.menu_about = self.menu.addMenu("&About")
-        about = QAction("About Qt", self, shortcut=QKeySequence(QKeySequence.HelpContents),
-                        triggered=qApp.aboutQt)
-        self.menu_about.addAction(about)
 
         self.toolbar = QToolBar()
         self.toolbar.setIconSize(QSize(16,16))
@@ -202,6 +208,32 @@ class Window(QMainWindow):
 
         self.create_scroll_layout()
         
+                # Main menu bar
+        self.menu = self.menuBar()
+        self.menu_file = self.menu.addMenu("File")
+        exit = QAction("Exit", self, triggered=qApp.quit)
+        self.menu_file.addAction(exit)
+
+        self.menu_device = self.menu.addMenu("Devices")
+        if self.webcam:
+            self.webcam_action = QAction("Webcam")
+            self.webcam_action.triggered.connect(self.web_found)
+            self.menu_device.addAction(self.webcam_action)
+            self.menu_device.addSeparator()
+        
+        if self.oak is not None:
+            self.oak_sub = self.menu_device.addMenu("OAK Camera: "+self.oak[0])
+            for cam in self.oak[1]:
+                self.cam_action = QAction(cam,self)
+                self.cam_action.triggered.connect(self.oak_found)
+                self.oak_sub.addAction(self.cam_action)
+                # self.oak_sub.addSeparator()
+
+
+        # self.menu_about = self.menu.addMenu("&About")
+        # about = QAction("About Qt", self, shortcut=QKeySequence(QKeySequence.HelpContents),
+        #                 triggered=qApp.aboutQt)
+        # self.menu_about.addAction(about)
 
         # Central widget
         widget = QWidget(self)
@@ -583,9 +615,9 @@ class Window(QMainWindow):
         if self.master_mode == 'live':
             if not self.saveTimer.isActive():
                 # write video
+
                 self.record.setStyleSheet("background-color:red")
-                self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-                os.makedirs(self.image_dir)
+                self.image_dir = QFileDialog.getExistingDirectory()
                 self.saveTimer.start()
                 self.th2 = LiveRecord(self)
                 self.th2.updatescroll.connect(self.setScrollImage)
@@ -595,17 +627,19 @@ class Window(QMainWindow):
 
             else:
                 # stop writing
+
                 self.record.setStyleSheet("background-color:gray")
                 self.saveTimer.stop()
                 self.th2.active = False                                           
-                self.th2.terminate()                    
+                self.th2.terminate()
+                self.clear_scroll_layout()
+                self.create_scroll_layout()                 
         
         elif self.master_mode == 'offline':
             if not self.recording:
                 self.recording = True
                 self.record.setStyleSheet("background-color:red")
-                self.image_dir = os.path.join(os.getcwd(), datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
-                os.makedirs(self.image_dir)
+                self.image_dir = QFileDialog.getExistingDirectory()
             else:
                 self.recording = False
                 self.record.setStyleSheet("background-color:gray")     

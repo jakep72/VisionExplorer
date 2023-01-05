@@ -1,6 +1,7 @@
 import os
 import glob
 import cv2
+# from frame_num import number
 from MainScreenThread import Thread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
@@ -8,6 +9,9 @@ from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
                                QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand)
+
+def number(f):
+    return(int(f[5:-4]))
 
 class ScrollThread(QThread):
     updatescroll = Signal(list)
@@ -19,7 +23,7 @@ class ScrollThread(QThread):
         self.cap = True
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
-        self.glob_formats = "*.jpg,*.bmp,*.jpe,*.jpeg,*.tif,*.tiff"
+        self.glob_formats = ['*.jpg','*.bmp','*.jpe','*.jpeg','*.tif','*.tiff']
              
     def set_file(self, fname):
         self.image_source =  fname.text()
@@ -47,10 +51,14 @@ class ScrollThread(QThread):
             self.quit()
 
         elif os.path.isdir(self.image_source):
-            # total_frames = len([glob.glob1(self.image_source,e) for e in self.glob_formats][0])
             total_frames = len([f for f_ in [glob.glob(os.path.join(self.image_source,e)) for e in self.glob_formats] for f in f_])
             i = 0
-            for file in os.listdir(self.image_source):
+            try:
+                frames = sorted(os.listdir(self.image_source),key=number)
+            except ValueError:
+                frames = os.listdir(self.image_source)
+
+            for file in frames:
                 path = os.path.join(self.image_source,file)
                 cap = cv2.VideoCapture(path)
                 if file.lower().endswith(self.img_formats):

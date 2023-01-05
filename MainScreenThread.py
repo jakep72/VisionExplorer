@@ -3,13 +3,16 @@ import time
 import glob
 import cv2
 import depthai as dai
-from OAK_Cam import make_pipe
+import numpy as np
+from OAK_Cam import make_color_pipe, make_mono_left_pipe, make_mono_right_pipe, make_stereo_pipe
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
                                QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand)
+def number(f):
+    return(int(f[5:-4]))
 
 class Thread(QThread):
     updateFrame = Signal(QImage)
@@ -34,6 +37,8 @@ class Thread(QThread):
             self.status = True
               
             if self.image_source != None:
+
+                ##### Video or Image files -- offline mode only #####
                 if self.image_source.lower().endswith(self.mixed_formats):
                     source = self.image_source
                     self.cap = cv2.VideoCapture(source)
@@ -52,14 +57,19 @@ class Thread(QThread):
                     img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                     img = img.scaled(720, 480)
                     self.updateFrame.emit(img)
-                          
+
+                ##### Directories of image files -- offline mode only #####         
                 elif os.path.isdir(self.image_source):
                     source = self.image_source
                     if self.image_source != None and self.image_source != source:
                         self.status = False
-                    # frames = glob.glob1(source,"*.jpg")
-                    # frames = [glob.glob1(source,e) for e in self.glob_formats][0]
-                    frames = [f for f_ in [glob.glob(os.path.join(source,e)) for e in self.glob_formats] for f in f_]
+                        return
+
+                    try:
+                        frames = sorted(os.listdir(source),key=number)
+                    except ValueError:
+                        frames = os.listdir(source)
+                    
                     file = frames[self.frame_no]
                     path = os.path.join(source,file)
                     self.cap = cv2.VideoCapture(path)
@@ -67,17 +77,65 @@ class Thread(QThread):
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         ret,frame = self.cap.read()
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        # cv2.putText(frame,"frame #"+str(i+1),(75,75),cv2.FONT_HERSHEY_COMPLEX,4,(255,255,255),6)
-                        # frame = cv2.resize(frame,(640,480))
-
                         h, w, ch = frame.shape
                         img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                         img = img.scaled(720, 480)
                         self.updateFrame.emit(img)
 
+                ##### Webcam -- offline and live mode #####
+                elif self.image_source == '0':
+                    source = self.image_source
+                    if self.image_source != None and self.image_source != source:
+                        self.status = False
+                        self.cap.release()
+
+                    self.cap = cv2.VideoCapture(int(source))
+                    
+                    if self.master_mode == 'live':
+                        while self.status:
+                            if self.image_source != None and self.image_source != source:
+                                self.status = False
+                            ret, frame = self.cap.read()
+                            if not ret:
+                                self.status = False
+                
+                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                            # frame = cv2.resize(frame,(640,480))
+
+                            h, w, ch = frame.shape
+                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                            img = img.scaled(720, 480)
+                            self.updateFrame.emit(img)
+                            
+                            
+
+                    elif self.master_mode == 'offline':
+                        if self.image_source != None and self.image_source != source:
+                            self.status = False
+                        ret, frame = self.cap.read()
+                        if not ret:
+                            self.status = False
+            
+                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        h, w, ch = frame.shape
+                        img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                        img = img.scaled(720, 480)
+                        self.updateFrame.emit(img)
+                        while self.status:
+                            if self.master_mode == 'offline':
+                                if self.image_source != source:
+                                    self.status = False
+                                    break
+                                else:
+                                    pass
+                            elif self.master_mode == 'live':
+                                self.status = False
+                                break
+
+                ##### OAK-D LITE Color Camera -- offline and live mode ####
                 elif self.image_source == '1':
                     source = self.image_source
-                    pipeline = make_pipe()
+                    pipeline = make_color_pipe()
                     # Connect to device and start pipeline
                     with dai.Device(pipeline,usb2Mode=True) as device:
 
@@ -85,6 +143,7 @@ class Thread(QThread):
 
                         if self.master_mode == 'live':
                             while self.status:
+                                s = time.time()
                                 if self.image_source != None and self.image_source != source:
                                     self.status = False
                                 videoIn = video.get()
@@ -94,6 +153,8 @@ class Thread(QThread):
                                 img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                                 img = img.scaled(720, 480)
                                 self.updateFrame.emit(img)
+                                e = time.time()
+                                
                                 if self.master_mode == 'live':
                                     pass
                                 else:
@@ -121,54 +182,153 @@ class Thread(QThread):
                                     self.status = False
                                     break
                                     
-                elif self.image_source == '0':
+                ##### OAK-D LITE Right Mono Camera -- offline and live mode #####
+                elif self.image_source == '2':
                     source = self.image_source
-                    if self.image_source != None and self.image_source != source:
-                        self.status = False
-                        self.cap.release()
+                    pipeline = make_mono_right_pipe()
+                    # Connect to device and start pipeline
+                    with dai.Device(pipeline,usb2Mode=True) as device:
 
-                    self.cap = cv2.VideoCapture(int(source))
-                    
-                    if self.master_mode == 'live':
-                        while self.status:
+                        qRight = device.getOutputQueue(name="right", maxSize=1, blocking=False)
+
+                        if self.master_mode == 'live':
+                            while self.status:
+                                s = time.time()
+                                if self.image_source != None and self.image_source != source:
+                                    self.status = False
+                                inRight = qRight.get()
+                                frame = inRight.getCvFrame()
+                                h, w  = frame.shape
+                                img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                img = img.scaled(720, 480)
+                                self.updateFrame.emit(img)
+                                e = time.time()
+
+                                if self.master_mode == 'live':
+                                    pass
+                                else:
+                                    self.status = False
+                                    break
+                        
+                        elif self.master_mode == 'offline':
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
-                            ret, frame = self.cap.read()
-                            if not ret:
-                                self.status = False
-                
-                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            # frame = cv2.resize(frame,(640,480))
+                            inRight = qRight.get()
+                            frame = inRight.getCvFrame()
+                            h, w  = frame.shape
+                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                            img = img.scaled(720, 480)
+                            self.updateFrame.emit(img)
+                            while self.status:
+                                if self.master_mode == 'offline':
+                                    if self.image_source != source:
+                                        self.status = False
+                                        break
+                                    else:
+                                        pass
+                                elif self.master_mode == 'live':
+                                    self.status = False
+                                    break
 
+                ##### OAK-D LITE Left Mono Camera -- offline and live mode #####
+                elif self.image_source == '3':
+                    source = self.image_source
+                    pipeline = make_mono_left_pipe()
+                    # Connect to device and start pipeline
+                    with dai.Device(pipeline,usb2Mode=True) as device:
+
+                        qLeft = device.getOutputQueue(name="left", maxSize=1, blocking=False)
+
+                        if self.master_mode == 'live':
+                            while self.status:
+                                s = time.time()
+                                if self.image_source != None and self.image_source != source:
+                                    self.status = False
+                                inLeft = qLeft.get()
+                                frame = inLeft.getCvFrame()
+                                h, w  = frame.shape
+                                img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                img = img.scaled(720, 480)
+                                self.updateFrame.emit(img)
+                                e = time.time()
+
+                                if self.master_mode == 'live':
+                                    pass
+                                else:
+                                    self.status = False
+                                    break
+                        
+                        elif self.master_mode == 'offline':
+                            if self.image_source != None and self.image_source != source:
+                                self.status = False
+                            inLeft = qLeft.get()
+                            frame = inLeft.getCvFrame()
+                            h, w  = frame.shape
+                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                            img = img.scaled(720, 480)
+                            self.updateFrame.emit(img)
+                            while self.status:
+                                if self.master_mode == 'offline':
+                                    if self.image_source != source:
+                                        self.status = False
+                                        break
+                                    else:
+                                        pass
+                                elif self.master_mode == 'live':
+                                    self.status = False
+                                    break
+
+                ##### OAK-D LITE Depth Camera -- offline and live mode #####
+                elif self.image_source == '4':
+                    source = self.image_source
+                    pipeline, depth = make_stereo_pipe()
+                    # Connect to device and start pipeline
+                    with dai.Device(pipeline,usb2Mode=True) as device:
+
+                        q = device.getOutputQueue(name="disparity", maxSize=1, blocking=False)
+
+                        if self.master_mode == 'live':
+                            while self.status:
+                                s = time.time()
+                                if self.image_source != None and self.image_source != source:
+                                    self.status = False
+                                inq = q.get()
+                                frame = inq.getFrame()
+                                frame = (frame *(255 / depth.initialConfig.getMaxDisparity())).astype(np.uint8)
+                                frame = cv2.applyColorMap(frame,cv2.COLORMAP_JET)
+                                h, w, ch = frame.shape
+                                img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                img = img.scaled(720, 480)
+                                self.updateFrame.emit(img)
+                                e = time.time()
+
+                                if self.master_mode == 'live':
+                                    pass
+                                else:
+                                    self.status = False
+                                    break
+                        
+                        elif self.master_mode == 'offline':
+                            if self.image_source != None and self.image_source != source:
+                                self.status = False
+                            inq = q.get()
+                            frame = inq.getFrame()
+                            frame = (frame *(255 / depth.initialConfig.getMaxDisparity())).astype(np.uint8)
+                            frame = cv2.applyColorMap(frame,cv2.COLORMAP_JET)
                             h, w, ch = frame.shape
                             img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                             img = img.scaled(720, 480)
                             self.updateFrame.emit(img)
-
-                    elif self.master_mode == 'offline':
-                        if self.image_source != None and self.image_source != source:
-                            self.status = False
-                        ret, frame = self.cap.read()
-                        if not ret:
-                            self.status = False
-            
-                        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        # frame = cv2.resize(frame,(640,480))
-
-                        h, w, ch = frame.shape
-                        img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                        img = img.scaled(720, 480)
-                        self.updateFrame.emit(img)
-                        while self.status:
-                            if self.master_mode == 'offline':
-                                if self.image_source != source:
+                            while self.status:
+                                if self.master_mode == 'offline':
+                                    if self.image_source != source:
+                                        self.status = False
+                                        break
+                                    else:
+                                        pass
+                                elif self.master_mode == 'live':
                                     self.status = False
                                     break
-                                else:
-                                    pass
-                            elif self.master_mode == 'live':
-                                self.status = False
-                                break
            
             else:
                 pass
