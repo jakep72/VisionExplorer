@@ -127,6 +127,7 @@ class Window(QMainWindow):
         self.active_widget = None
         self.playback_mode = 'idle'
         self.rubberBand = None
+        self.fps = None
         self.total_frames = None
         self.frame_rate = 1
         self.recording = False
@@ -456,10 +457,12 @@ class Window(QMainWindow):
             self.record.setEnabled(0)
 
     @Slot(QImage)
-    def setImage(self, image):
-        self.label.setPixmap(QPixmap.fromImage(image))
+    def setImage(self, data):
+        self.label.setPixmap(QPixmap.fromImage(data[0]))
+        self.fps = data[1]
+        if self.fps is not None and self.fps !=0:
+            self.poslabel.setText("FPS: "+str(int(1000/self.fps)))
         
-
     @Slot(QImage)
     def setScrollImage(self,data):
         if self.master_mode == 'offline':      

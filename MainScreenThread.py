@@ -15,7 +15,7 @@ def number(f):
     return(int(f[5:-4]))
 
 class Thread(QThread):
-    updateFrame = Signal(QImage)
+    updateFrame = Signal(list)
     
     def __init__(self, parent=None):
         QThread.__init__(self, parent)
@@ -56,7 +56,7 @@ class Thread(QThread):
                     h, w, ch = frame.shape
                     img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                     img = img.scaled(720, 480)
-                    self.updateFrame.emit(img)
+                    self.updateFrame.emit([img,None])
 
                 ##### Directories of image files -- offline mode only #####         
                 elif os.path.isdir(self.image_source):
@@ -80,7 +80,7 @@ class Thread(QThread):
                         h, w, ch = frame.shape
                         img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                         img = img.scaled(720, 480)
-                        self.updateFrame.emit(img)
+                        self.updateFrame.emit([img,None])
 
                 ##### Webcam -- offline and live mode #####
                 elif self.image_source == '0':
@@ -93,6 +93,7 @@ class Thread(QThread):
                     
                     if self.master_mode == 'live':
                         while self.status:
+                            s = time.time()
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
                             ret, frame = self.cap.read()
@@ -100,12 +101,12 @@ class Thread(QThread):
                                 self.status = False
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            # frame = cv2.resize(frame,(640,480))
-
                             h, w, ch = frame.shape
                             img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                             img = img.scaled(720, 480)
-                            self.updateFrame.emit(img)
+                            e = time.time()
+                            delta = 1000*(e-s)
+                            self.updateFrame.emit([img,delta])
                             
                             
 
@@ -120,7 +121,7 @@ class Thread(QThread):
                         h, w, ch = frame.shape
                         img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                         img = img.scaled(720, 480)
-                        self.updateFrame.emit(img)
+                        self.updateFrame.emit([img,None])
                         while self.status:
                             if self.master_mode == 'offline':
                                 if self.image_source != source:
@@ -152,8 +153,10 @@ class Thread(QThread):
                                 h, w, ch = frame.shape
                                 img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                                 img = img.scaled(720, 480)
-                                self.updateFrame.emit(img)
                                 e = time.time()
+                                delta = 1000*(e-s)
+                                self.updateFrame.emit([img,delta])
+                                
                                 
                                 if self.master_mode == 'live':
                                     pass
@@ -170,7 +173,7 @@ class Thread(QThread):
                             h, w, ch = frame.shape
                             img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                             img = img.scaled(720, 480)
-                            self.updateFrame.emit(img)
+                            self.updateFrame.emit([img,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
@@ -201,8 +204,9 @@ class Thread(QThread):
                                 h, w  = frame.shape
                                 img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                                 img = img.scaled(720, 480)
-                                self.updateFrame.emit(img)
                                 e = time.time()
+                                delta = 1000*(e-s)
+                                self.updateFrame.emit([img,delta])
 
                                 if self.master_mode == 'live':
                                     pass
@@ -218,7 +222,7 @@ class Thread(QThread):
                             h, w  = frame.shape
                             img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                             img = img.scaled(720, 480)
-                            self.updateFrame.emit(img)
+                            self.updateFrame.emit([img,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
@@ -249,8 +253,10 @@ class Thread(QThread):
                                 h, w  = frame.shape
                                 img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                                 img = img.scaled(720, 480)
-                                self.updateFrame.emit(img)
                                 e = time.time()
+                                delta = 1000*(e-s)
+                                self.updateFrame.emit([img,delta])
+                                
 
                                 if self.master_mode == 'live':
                                     pass
@@ -266,7 +272,7 @@ class Thread(QThread):
                             h, w  = frame.shape
                             img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                             img = img.scaled(720, 480)
-                            self.updateFrame.emit(img)
+                            self.updateFrame.emit([img,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
@@ -299,8 +305,9 @@ class Thread(QThread):
                                 h, w, ch = frame.shape
                                 img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                                 img = img.scaled(720, 480)
-                                self.updateFrame.emit(img)
                                 e = time.time()
+                                delta = 1000*(e-s)
+                                self.updateFrame.emit([img,delta])
 
                                 if self.master_mode == 'live':
                                     pass
@@ -318,7 +325,7 @@ class Thread(QThread):
                             h, w, ch = frame.shape
                             img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                             img = img.scaled(720, 480)
-                            self.updateFrame.emit(img)
+                            self.updateFrame.emit([img,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
