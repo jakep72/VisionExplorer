@@ -1,29 +1,33 @@
 import sys
 import os
 import time
+from functools import partial
 import datetime
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
-from findDevices import OAK_Devices, Webcam_Devices
+from findDevices import OAK_USB_Devices, Webcam_Devices
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox)
 #https://icons8.com
 #                    
 class Window(QMainWindow):
     def eventFilter(self, object, event):
-        if str(event.type()) == 'Type.HoverMove' and self.active_widget is not None:
-            self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-            self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
-            return True
-        elif str(event.type()) == 'Type.HoverMove' and self.active_widget is None:
-            self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-            self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
-            return True
+        if str(event.type()) == 'Type.HoverMove': 
+            if self.active_widget is not None:
+                self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
+                self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
+                return True
+
+            elif self.active_widget is None:
+                self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
+                self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
+                return True
+
         elif str(event.type()) == 'Type.HoverLeave':
             self.poslabel.setText("")
             return True
@@ -31,14 +35,19 @@ class Window(QMainWindow):
             return False
 
     def mouseDoubleClickEvent(self, event):
-        if self.pause.isEnabled():
-            return
+        # print(self.table.item(0,0).text())
+        # if self.pause.isEnabled() or self.master_mode == 'live' or self.table.item(0,0).text().lower().endswith(self.mixed_formats) or not os.path.isdir(self.table.item(0,0).text()):
+            
+        #     return
 
-        else:
+        if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
             widget = self.childAt(event.position().x(),event.position().y())
             widgets = self.contentwidget.findChildren(QLabel)
+
+            if self.pause.isEnabled():
+                return
             
-            if widget is not None and widget.objectName():
+            elif widget is not None and widget.objectName() and not self.pause.isEnabled():
                 self.playback_mode = 'idle'
                 self.active_widget = widget
                 self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode)
@@ -63,6 +72,7 @@ class Window(QMainWindow):
                     self.play.setCheckable(1)
                     self.rewind.setDisabled(0)
                     self.rewind.setCheckable(1)
+
 
     # def mousePressEvent(self, event):
     #     if self.rubberBand:
@@ -90,6 +100,9 @@ class Window(QMainWindow):
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(1)
+            self.menu_device.setDisabled(1)
+            self.fpslabel.setText(" ")
+            
             
         elif self.master_mode == 'live':
             self.record.setEnabled(0)
@@ -100,6 +113,9 @@ class Window(QMainWindow):
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(0)
+            self.menu_device.setDisabled(0)
+            self.ave_fps = []
+            self.fpslabel.setText(" ")
 
     def web_found(self):
         self.table.setItem(0,0,QTableWidgetItem('0'))
@@ -117,6 +133,29 @@ class Window(QMainWindow):
             self.table.setItem(0,0,QTableWidgetItem('3'))
         elif cam == 'Stereo':
             self.table.setItem(0,0,QTableWidgetItem('4'))
+    
+    def refresh_devices(self):
+        self.menu_device.clear()
+        self.webcam = Webcam_Devices()
+        self.oak = OAK_USB_Devices()
+        if self.webcam:
+            self.webcam_action = QAction("Webcam")
+            self.webcam_action.triggered.connect(self.web_found)
+            self.menu_device.addAction(self.webcam_action)
+            self.menu_device.addSeparator()
+        
+        if self.oak is not None:
+            self.oak_sub = self.menu_device.addMenu("OAK Camera: "+self.oak[0])
+            self.menu_device.addSeparator()
+            for cam in self.oak[1]:
+                self.cam_action = QAction(cam,self)
+                self.cam_action.triggered.connect(self.oak_found)
+                self.oak_sub.addAction(self.cam_action)
+                # self.oak_sub.addSeparator()
+        
+        self.refresh_action = QAction("Refresh Available Devices")
+        self.refresh_action.triggered.connect(self.refresh_devices)
+        self.menu_device.addAction(self.refresh_action)
 
     def __init__(self):
         # super().__init__()
@@ -128,6 +167,7 @@ class Window(QMainWindow):
         self.playback_mode = 'idle'
         self.rubberBand = None
         self.fps = None
+        self.ave_fps = []
         self.total_frames = None
         self.frame_rate = 1
         self.recording = False
@@ -138,7 +178,7 @@ class Window(QMainWindow):
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.webcam = Webcam_Devices()
-        self.oak = OAK_Devices()
+        self.oak = OAK_USB_Devices()
   
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
@@ -172,6 +212,10 @@ class Window(QMainWindow):
         self.poslabel.setAlignment(Qt.AlignCenter)
         self.poslabel.setStyleSheet("color:white")
 
+        self.fpslabel = QLabel(self)
+        self.fpslabel.setAlignment(Qt.AlignRight)
+        self.fpslabel.setStyleSheet("color:white")
+
         self.th = Thread(self)
         self.th.updateFrame.connect(self.setImage)
 
@@ -192,6 +236,11 @@ class Window(QMainWindow):
         self.table.cellChanged.connect(self.set_source)
         self.table.setStyleSheet("background-color:white")
         rightlayout.addWidget(self.table)
+        rightlayout.addWidget(self.fpslabel)
+        # rightlayout.setContentsMargins(75,0,0,0)
+        rightlayout.setSpacing(5)
+        rightlayout.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
+
         toplayout.addLayout(leftlayout)
         toplayout.addLayout(rightlayout)
         toplayout.setSpacing(75)
@@ -224,11 +273,18 @@ class Window(QMainWindow):
         
         if self.oak is not None:
             self.oak_sub = self.menu_device.addMenu("OAK Camera: "+self.oak[0])
+            self.menu_device.addSeparator()
             for cam in self.oak[1]:
                 self.cam_action = QAction(cam,self)
                 self.cam_action.triggered.connect(self.oak_found)
                 self.oak_sub.addAction(self.cam_action)
-                # self.oak_sub.addSeparator()
+                self.oak_sub.addSeparator()
+        
+        self.refresh_action = QAction("Refresh Available Devices")
+        self.refresh_action.triggered.connect(self.refresh_devices)
+        self.menu_device.addAction(self.refresh_action)
+
+
 
 
         # self.menu_about = self.menu.addMenu("&About")
@@ -455,13 +511,29 @@ class Window(QMainWindow):
             self.clear_scroll_layout()
             self.create_scroll_layout()
             self.record.setEnabled(0)
+    
+    def calc_ave_fps(self,fps):
+        self.ave_fps.append(fps)
+        if len(self.ave_fps) == 100:
+            self.ave_fps.pop(0)
+
+        if len(self.ave_fps) > 1:
+            ave = sum(self.ave_fps)/len(self.ave_fps)
+            return (ave)
+        else:
+            return(None)
+
 
     @Slot(QImage)
     def setImage(self, data):
         self.label.setPixmap(QPixmap.fromImage(data[0]))
         self.fps = data[1]
         if self.fps is not None and self.fps !=0:
-            self.poslabel.setText("FPS: "+str(int(1000/self.fps)))
+            ave_fps = self.calc_ave_fps(self.fps)
+            if ave_fps is not None:
+                self.fpslabel.setText(str(round(ave_fps,1))+" ms")
+            else:
+                self.fpslabel.setText(" ")
         
     @Slot(QImage)
     def setScrollImage(self,data):
@@ -484,20 +556,26 @@ class Window(QMainWindow):
             self.total_frames = data[2]
         
         elif self.master_mode == 'live':
-            self.slabel=QLabel()
-            self.slabel.setObjectName(str(data[1]))
-            self.slabel.setFixedSize(160, 120)
-            self.slabel.setPixmap(data[0])
-            self.contentwidget.layout().addWidget(self.slabel)
+            self.rlabel=QLabel()
+            self.zlabel = VerticalLabel()
+            self.zlabel.setStyleSheet("color:white;font-weight:bold")
+            self.zlabel.setText("Frame " +str(data[1]))
+            self.rlabel.setObjectName("liverecord"+str(data[1]))
+            self.rlabel.setFixedSize(160, 120)
+            self.rlabel.setPixmap(data[0])
+            self.contentwidget.layout().addWidget(self.zlabel)
+            self.contentwidget.layout().addWidget(self.rlabel)
             
-            # self.active_widget = self.findChild(QWidget,str(data[1]))
-            # self.active_widget.setStyleSheet("border: 5px solid green;")
-            # self.scrollArea.ensureWidgetVisible(self.active_widget)
-            # widgets = self.contentwidget.findChildren(QLabel)
-            # for w in widgets:
-            #     if w.objectName():
-            #         if w.objectName() != self.active_widget.objectName():
-            #             w.setStyleSheet("border:0px solid black")
+            self.active_widget = self.findChild(QWidget,"liverecord"+str(data[1]))
+            self.active_widget.setStyleSheet("border: 5px solid green;")
+            widgets = self.contentwidget.findChildren(QLabel)
+            for w in widgets:
+                if w.objectName():
+                    if w.objectName() != self.active_widget.objectName():
+                        w.setStyleSheet("border:0px solid black")
+            qApp.processEvents()
+            QTimer.singleShot(0,partial(self.scrollArea.ensureWidgetVisible,self.active_widget))
+
 
 
     def prog_update(self,frame):
@@ -535,6 +613,7 @@ class Window(QMainWindow):
             self.play.setCheckable(1)
             self.rewind.setDisabled(0)
             self.rewind.setCheckable(1)
+            self.table.setDisabled(0)
             self.playback_mode = 'playing'
 
         else:
@@ -542,6 +621,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'playing'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
+                self.table.setDisabled(1)
                 QTimer.singleShot(int(1000/self.frame_rate), lambda:self.playButtonClicked(i))
                 if self.recording:
                     self.saveImages(self.image_dir,i)
@@ -551,10 +631,12 @@ class Window(QMainWindow):
                 self.play.setCheckable(0)
                 self.pause.setDisabled(1)
                 self.pause.setCheckable(0)
+                self.table.setDisabled(0)
                 self.playback_mode == 'idle'
             else:
                 self.play.setDisabled(0)
                 self.play.setCheckable(1)
+                self.table.setDisabled(0)
                 self.playback_mode == 'idle'
 
     def rewindButtonClicked(self,i):
@@ -576,6 +658,7 @@ class Window(QMainWindow):
             self.rewind.setCheckable(1)
             self.play.setDisabled(0)
             self.play.setCheckable(1)
+            self.table.setDisabled(0)
             self.playback_mode = 'rewind'
 
         else:
@@ -583,6 +666,7 @@ class Window(QMainWindow):
                 self.playback_mode = 'rewind'
                 self.pause.setDisabled(0)
                 self.pause.setCheckable(1)
+                self.table.setDisabled(1)
                 QTimer.singleShot(int(1000/self.frame_rate), lambda:self.rewindButtonClicked(i))
                 if self.recording:
                     self.saveImages(self.image_dir,i)
@@ -592,10 +676,12 @@ class Window(QMainWindow):
                 self.rewind.setCheckable(0)
                 self.pause.setDisabled(1)
                 self.pause.setCheckable(0)
+                self.table.setDisabled(0)
                 self.playback_mode == 'idle'
             else:
                 self.rewind.setDisabled(0)
                 self.rewind.setCheckable(1)
+                self.table.setDisabled(0)
                 self.playback_mode == 'idle'
 
     def pauseButtonClicked(self):
@@ -605,6 +691,7 @@ class Window(QMainWindow):
         widgets = self.contentwidget.findChildren(QLabel)
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
+        self.table.setDisabled(0)
         for w in widgets:
             if w.objectName():
                 if w.objectName() != self.active_widget.objectName():
@@ -614,11 +701,17 @@ class Window(QMainWindow):
     def saveImages(self,dir,i):
         self.label.pixmap().save(os.path.join(dir,'frame'+str(i)+'.jpg'))
 
+    def pop_message(self):
+        dlg = QMessageBox()
+        dlg.setWindowTitle(" ")
+        dlg.setText("Images saved to "+str(self.image_dir))
+        dlg.show()
+
     def recordButtonClicked(self):
         if self.master_mode == 'live':
             if not self.saveTimer.isActive():
                 # write video
-
+                self.mode_button.setDisabled(1)
                 self.record.setStyleSheet("background-color:red")
                 self.image_dir = QFileDialog.getExistingDirectory()
                 self.saveTimer.start()
@@ -633,10 +726,18 @@ class Window(QMainWindow):
 
                 self.record.setStyleSheet("background-color:gray")
                 self.saveTimer.stop()
-                self.th2.active = False                                           
+                self.th2.active = False
+                self.th2.quit()                                           
                 self.th2.terminate()
+                time.sleep(2)
+                self.active_widget = None
                 self.clear_scroll_layout()
-                self.create_scroll_layout()                 
+                self.create_scroll_layout()
+                self.mode_button.setDisabled(0)
+                self.record.setDisabled(0)
+
+
+                                
         
         elif self.master_mode == 'offline':
             if not self.recording:

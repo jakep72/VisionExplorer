@@ -88,6 +88,9 @@ class Thread(QThread):
                     if self.image_source != None and self.image_source != source:
                         self.status = False
                         self.cap.release()
+                        print("1")
+                        print(self.cap.isOpened())
+                        print(self.status)
 
                     self.cap = cv2.VideoCapture(int(source))
                     
@@ -96,9 +99,18 @@ class Thread(QThread):
                             s = time.time()
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
+                                self.cap.release()
+                                print("2")
+                                print(self.cap.isOpened())
+                                print(self.status)
+
                             ret, frame = self.cap.read()
                             if not ret:
                                 self.status = False
+                                self.cap.release()
+                                print("3")
+                                print(self.cap.isOpened())
+                                print(self.status)
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             h, w, ch = frame.shape
@@ -107,15 +119,24 @@ class Thread(QThread):
                             e = time.time()
                             delta = 1000*(e-s)
                             self.updateFrame.emit([img,delta])
+
+                            if self.master_mode == 'live':
+                                pass
+                            else:
+                                self.cap.release()
+                                self.status = False
+                                break
                             
                             
 
                     elif self.master_mode == 'offline':
                         if self.image_source != None and self.image_source != source:
                             self.status = False
+                            self.cap.release()
                         ret, frame = self.cap.read()
                         if not ret:
                             self.status = False
+                            self.cap.release()
             
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         h, w, ch = frame.shape
@@ -126,11 +147,13 @@ class Thread(QThread):
                             if self.master_mode == 'offline':
                                 if self.image_source != source:
                                     self.status = False
+                                    self.cap.release()
                                     break
                                 else:
                                     pass
                             elif self.master_mode == 'live':
                                 self.status = False
+                                self.cap.release()
                                 break
 
                 ##### OAK-D LITE Color Camera -- offline and live mode ####

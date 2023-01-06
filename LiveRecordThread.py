@@ -1,6 +1,7 @@
 import os
 import time
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QMessageBox
 
 
 
@@ -25,3 +26,12 @@ class LiveRecord(QThread):
             self.updatescroll.emit([img,i])
             time.sleep(self.frame_rate)
             i+=1
+
+    def quit(self):
+        dlg = QMessageBox()
+        dlg.setWindowTitle(" ")
+        dlg.setText("Images saved to "+str(self.dir))
+        # dlg.setAttribute(Qt.WA_DeleteOnClose,True)
+        
+        # dlg.setModal(False)
+        dlg.exec()
