@@ -1,6 +1,36 @@
 import cv2
 import depthai as dai
+from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QMessageBox
 import contextlib
+
+class Load_Device_Thread(QThread):
+    updateDevices = Signal(list)
+    loaded = Signal(int)
+    
+    def __init__(self, parent=None):
+        QThread.__init__(self, parent)
+        
+
+    def run(self):
+        
+        self.webcam = Webcam_Devices()
+        self.oak = OAK_USB_Devices()
+        # self.loaded.emit(1)
+        self.updateDevices.emit([self.webcam,self.oak])
+        print('finished')
+        
+        # self.quit()
+
+    def quit(self):
+        dlg = QMessageBox()
+        dlg.setWindowTitle(" ")
+        dlg.setText("Test")
+        # dlg.setAttribute(Qt.WA_DeleteOnClose,True)
+        
+        # dlg.setModal(False)
+        dlg.exec()
+        # self.terminate()
 
 # def OAK_Devices():
 #     deviceInfos = dai.Device.getAllAvailableDevices()
@@ -77,6 +107,9 @@ def OAK_USB_Devices():
 
         devices = [mxId,en_cam_list]
         return(devices)
+
+
+
 
 
 
