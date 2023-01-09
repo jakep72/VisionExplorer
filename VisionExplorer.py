@@ -118,7 +118,7 @@ class Window(QMainWindow):
             self.fpslabel.setText(" ")
 
     def web_found(self):
-        self.table.setItem(0,0,QTableWidgetItem('0'))
+        self.table.setItem(0,0,QTableWidgetItem('Webcam'))
 
 
     def oak_found(self,checked):
@@ -126,64 +126,29 @@ class Window(QMainWindow):
         cam = action.text()
         
         if cam == 'Color Camera':
-           self.table.setItem(0,0,QTableWidgetItem('1'))
+           self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Color"))
         elif cam == 'Mono Left Camera':
-            self.table.setItem(0,0,QTableWidgetItem('2'))
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoLeft"))
         elif cam == 'Mono Right Camera':
-            self.table.setItem(0,0,QTableWidgetItem('3'))
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoRight"))
         elif cam == 'Stereo':
-            self.table.setItem(0,0,QTableWidgetItem('4'))
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Stereo"))
 
     def show_progress(self):
-        if hasattr(self,'dev_dlg'):
-            self.dev_dlg.deleteLater()
-            self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
-            self.dev_dlg.show()
-            print('show')
-        else:
-            self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
-            self.dev_dlg.show()
-       
-            print('show')
-        
-    
+        self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
+        self.dev_dlg.show()
     
     def update_progress(self,value):
         self.dev_dlg.hide()
 
-        print('delete')
-
-    @Slot()
-    def getDeviceData(self):
-        self.deviceth.updateDevices.connect(self.refresh_devices)
-
-        
-        self.deviceth.terminate()
-        time.sleep(1)
-
     def run_deviceth(self):
-        # self.deviceth.loaded.connect(self.update_progress)
-        self.deviceth.finished.connect(self.getDeviceData)
-        self.deviceth.started.connect(self.show_progress)
-        self.deviceth.loaded.connect(self.update_progress)
         self.deviceth.start()
-        print('started')
         
-        # self.dev_dlg.show()
-        # self.dev_update()
-       
-        
-    @Slot()
     def refresh_devices(self,data):
-        # self.deviceth.terminate()
         self.menu_device.clear()
-        # self.deviceth.quit()
-        if hasattr(self,'webcam_action'):
-            self.webcam_action.deleteLater()
-        if hasattr(self,'oak_sub'):
-            self.oak_sub.deleteLater()
         self.webcam = data[0]
         self.oak = data[1]
+        
         if self.webcam:
             self.webcam_action = QAction("Webcam")
             self.webcam_action.triggered.connect(self.web_found)
@@ -194,6 +159,7 @@ class Window(QMainWindow):
             for device in self.oak:
                 mxId, cams = list(device.items())[0]
                 self.oak_sub = self.menu_device.addMenu("OAK Camera: "+str(mxId))
+                self.oak_sub.setObjectName(mxId)
                 self.menu_device.addSeparator()
                 for cam in cams:
                     self.cam_action = QAction(cam,self)
@@ -204,9 +170,7 @@ class Window(QMainWindow):
         self.refresh_action = QAction("Refresh Available Devices")
         self.refresh_action.triggered.connect(self.run_deviceth)
         self.menu_device.addAction(self.refresh_action)
-        
-        if hasattr(self,'dev_dlg'):
-            self.dev_dlg.hide()
+        self.deviceth.quit()
         
 
     def __init__(self):
@@ -229,11 +193,6 @@ class Window(QMainWindow):
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
-        
-        self.webcam = Webcam_Devices()
-        self.oak = OAK_USB_Devices()
-        # self.webcam = None
-        # self.oak = None
 
 
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
@@ -314,7 +273,7 @@ class Window(QMainWindow):
 
         self.create_scroll_layout()
         
-                # Main menu bar
+        # Main menu bar
         self.menu = self.menuBar()
         self.menu_file = self.menu.addMenu("File")
         exit = QAction("Exit", self, triggered=qApp.quit)
@@ -322,28 +281,13 @@ class Window(QMainWindow):
 
         self.menu_device = self.menu.addMenu("Devices")
         self.deviceth = Load_Device_Thread(self)
-        self.refresh_devices([self.webcam,self.oak])
-        # self.deviceth.finished.connect(lambda:self.refresh_devices([self.webcam,self.oak]))
-        # self.deviceth.start()
-        # self.run_deviceth()
-        # if self.webcam:
-        #     self.webcam_action = QAction("Webcam")
-        #     self.webcam_action.triggered.connect(self.web_found)
-        #     self.menu_device.addAction(self.webcam_action)
-        #     self.menu_device.addSeparator()
+        self.deviceth.updateDevices.connect(self.refresh_devices)
+        self.deviceth.started.connect(self.show_progress)
+        self.deviceth.loaded.connect(self.update_progress)
         
-        # if self.oak is not None:
-        #     self.oak_sub = self.menu_device.addMenu("OAK Camera: "+self.oak[0])
-        #     self.menu_device.addSeparator()
-        #     for cam in self.oak[1]:
-        #         self.cam_action = QAction(cam,self)
-        #         self.cam_action.triggered.connect(self.oak_found)
-        #         self.oak_sub.addAction(self.cam_action)
-        #         self.oak_sub.addSeparator()
-        
-        # self.refresh_action = QAction("Refresh Available Devices")
-        # self.refresh_action.triggered.connect(self.refresh_devices)
-        # self.menu_device.addAction(self.refresh_action)
+        self.refresh_action = QAction("Search for Available Devices")
+        self.refresh_action.triggered.connect(self.run_deviceth)
+        self.menu_device.addAction(self.refresh_action)
 
 
 

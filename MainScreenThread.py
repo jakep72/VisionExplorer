@@ -83,16 +83,13 @@ class Thread(QThread):
                         self.updateFrame.emit([img,None])
 
                 ##### Webcam -- offline and live mode #####
-                elif self.image_source == '0':
+                elif self.image_source == 'Webcam':
                     source = self.image_source
                     if self.image_source != None and self.image_source != source:
                         self.status = False
                         self.cap.release()
-                        print("1")
-                        print(self.cap.isOpened())
-                        print(self.status)
 
-                    self.cap = cv2.VideoCapture(int(source))
+                    self.cap = cv2.VideoCapture(0)
                     
                     if self.master_mode == 'live':
                         while self.status:
@@ -100,17 +97,11 @@ class Thread(QThread):
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
                                 self.cap.release()
-                                print("2")
-                                print(self.cap.isOpened())
-                                print(self.status)
 
                             ret, frame = self.cap.read()
                             if not ret:
                                 self.status = False
                                 self.cap.release()
-                                print("3")
-                                print(self.cap.isOpened())
-                                print(self.status)
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                             h, w, ch = frame.shape
@@ -157,11 +148,12 @@ class Thread(QThread):
                                 break
 
                 ##### OAK-D LITE Color Camera -- offline and live mode ####
-                elif self.image_source == '1':
+                elif self.image_source.split('_')[1] == 'Color':
                     source = self.image_source
+                    info = dai.DeviceInfo(source.split('_')[0])
                     pipeline = make_color_pipe()
                     # Connect to device and start pipeline
-                    with dai.Device(pipeline,usb2Mode=True) as device:
+                    with dai.Device(pipeline,info,usb2Mode=True) as device:
 
                         video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
 
@@ -209,11 +201,12 @@ class Thread(QThread):
                                     break
                                     
                 ##### OAK-D LITE Right Mono Camera -- offline and live mode #####
-                elif self.image_source == '2':
+                elif self.image_source.split('_')[1] == 'MonoRight':
                     source = self.image_source
+                    info = dai.DeviceInfo(source.split('_')[0])
                     pipeline = make_mono_right_pipe()
                     # Connect to device and start pipeline
-                    with dai.Device(pipeline,usb2Mode=True) as device:
+                    with dai.Device(pipeline,info,usb2Mode=True) as device:
 
                         qRight = device.getOutputQueue(name="right", maxSize=1, blocking=False)
 
@@ -258,11 +251,12 @@ class Thread(QThread):
                                     break
 
                 ##### OAK-D LITE Left Mono Camera -- offline and live mode #####
-                elif self.image_source == '3':
+                elif self.image_source.split('_')[1] == 'MonoLeft':
                     source = self.image_source
+                    info = dai.DeviceInfo(source.split('_')[0])
                     pipeline = make_mono_left_pipe()
                     # Connect to device and start pipeline
-                    with dai.Device(pipeline,usb2Mode=True) as device:
+                    with dai.Device(pipeline,info,usb2Mode=True) as device:
 
                         qLeft = device.getOutputQueue(name="left", maxSize=1, blocking=False)
 
@@ -308,11 +302,12 @@ class Thread(QThread):
                                     break
 
                 ##### OAK-D LITE Depth Camera -- offline and live mode #####
-                elif self.image_source == '4':
+                elif self.image_source.split('_')[1] == 'Stereo':
                     source = self.image_source
+                    info = dai.DeviceInfo(source.split('_')[0])
                     pipeline, depth = make_stereo_pipe()
                     # Connect to device and start pipeline
-                    with dai.Device(pipeline,usb2Mode=True) as device:
+                    with dai.Device(pipeline,info,usb2Mode=True) as device:
 
                         q = device.getOutputQueue(name="disparity", maxSize=1, blocking=False)
 

@@ -11,26 +11,30 @@ class Load_Device_Thread(QThread):
     def __init__(self, parent=None):
         QThread.__init__(self, parent)
         
-
     def run(self):
-        
         self.webcam = Webcam_Devices()
         self.oak = OAK_USB_Devices()
         self.loaded.emit(1)
         self.updateDevices.emit([self.webcam,self.oak])
-        print('finished')
-        
-        # self.quit()
 
     def quit(self):
+        if self.webcam and self.oak is not None:
+            num_devs = '2 devices were found!'
+        elif not self.webcam and self.oak is not None:
+            num_devs = '1 device was found!'
+            print(2)
+        elif self.webcam and self.oak is None:
+            num_devs = '1 device was found!'
+            print(3)
+        else:
+            num_devs = 'No devices were found!'
+            print(4)
+
         dlg = QMessageBox()
-        dlg.setWindowTitle(" ")
-        dlg.setText("Test")
-        # dlg.setAttribute(Qt.WA_DeleteOnClose,True)
         
-        # dlg.setModal(False)
+        dlg.setWindowTitle(" ")
+        dlg.setText(num_devs)
         dlg.exec()
-        # self.terminate()
 
 def Webcam_Devices():
     cap = cv2.VideoCapture(0)
@@ -38,45 +42,6 @@ def Webcam_Devices():
         return(False)
     else:
         return(True)
-
-# def OAK_USB_Devices():
-#     pipeline = dai.Pipeline()
-#     try:
-#         en_cam_list = []
-#         with dai.Device(pipeline,usb2Mode=True) as device:
-#             mxId = device.getMxId()
-#             cameras = device.getConnectedCameras()
-#             for cam in cameras:
-#                 if str(cam) == 'CameraBoardSocket.RGB':
-#                     en_cam_list.append('Color Camera')
-#                 elif str(cam) == 'CameraBoardSocket.LEFT':
-#                     en_cam_list.append('Mono Left Camera')
-#                 elif str(cam) == 'CameraBoardSocket.RIGHT':
-#                     en_cam_list.append('Mono Right Camera')
-#             en_cam_list.append('Stereo')
-
-#         devices = [mxId,en_cam_list]
-#         return(devices)
-
-#     except RuntimeError:
-#         return(None)
-
-#     except Exception:
-#         en_cam_list = []
-#         with dai.Device(pipeline) as device:
-#             mxId = device.getMxId()
-#             cameras = device.getConnectedCameras()
-#             for cam in cameras:
-#                 if str(cam) == 'CameraBoardSocket.RGB':
-#                     en_cam_list.append('Color Camera')
-#                 elif str(cam) == 'CameraBoardSocket.LEFT':
-#                     en_cam_list.append('Mono Left Camera')
-#                 elif str(cam) == 'CameraBoardSocket.RIGHT':
-#                     en_cam_list.append('Mono Right Camera')
-#             en_cam_list.append('Stereo')
-
-#         devices = [mxId,en_cam_list]
-#         return(devices)
 
 def OAK_USB_Devices():
     devices = []
