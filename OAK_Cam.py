@@ -9,7 +9,9 @@ def make_color_pipe():
     # Define source and output
     camRgb = pipeline.create(dai.node.ColorCamera)
     xoutVideo = pipeline.create(dai.node.XLinkOut)
+    controlIn = pipeline.create(dai.node.XLinkIn)
 
+    controlIn.setStreamName("control")
     xoutVideo.setStreamName("video")
 
     # Properties
@@ -18,11 +20,12 @@ def make_color_pipe():
     camRgb.setVideoSize(720, 480)
     camRgb.setFps(35)
 
-    xoutVideo.input.setBlocking(False)
-    xoutVideo.input.setQueueSize(1)
+    # xoutVideo.input.setBlocking(False)
+    # xoutVideo.input.setQueueSize(1)
 
     # Linking
     camRgb.video.link(xoutVideo.input)
+    controlIn.out.link(camRgb.inputControl)
     return (pipeline)
 
 def make_mono_right_pipe():
@@ -30,7 +33,9 @@ def make_mono_right_pipe():
 
     monoRight = pipeline.create(dai.node.MonoCamera)
     xoutRight = pipeline.create(dai.node.XLinkOut)
+    controlIn = pipeline.create(dai.node.XLinkIn)
 
+    controlIn.setStreamName("control")
     xoutRight.setStreamName("right")
 
     monoRight.setBoardSocket(dai.CameraBoardSocket.RIGHT)
@@ -38,6 +43,7 @@ def make_mono_right_pipe():
     monoRight.setFps(99)
 
     monoRight.out.link(xoutRight.input)
+    controlIn.out.link(monoRight.inputControl)
 
     return(pipeline)
 
@@ -46,7 +52,9 @@ def make_mono_left_pipe():
 
     monoLeft = pipeline.create(dai.node.MonoCamera)
     xoutLeft = pipeline.create(dai.node.XLinkOut)
+    controlIn = pipeline.create(dai.node.XLinkIn)
 
+    controlIn.setStreamName("control")
     xoutLeft.setStreamName("left")
 
     monoLeft.setBoardSocket(dai.CameraBoardSocket.LEFT)
@@ -54,13 +62,14 @@ def make_mono_left_pipe():
     monoLeft.setFps(99)
 
     monoLeft.out.link(xoutLeft.input)
+    controlIn.out.link(monoLeft.inputControl)
 
     return(pipeline)
 
 def make_stereo_pipe():
-    extended_disparity = False
-    subpixel = True
-    lr_check = True
+    ext = False
+    sub = True
+    lr = True
 
     pipeline = dai.Pipeline()
 
@@ -80,9 +89,9 @@ def make_stereo_pipe():
     depth.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
     depth.initialConfig.setMedianFilter(dai.MedianFilter.KERNEL_7x7)
 
-    depth.setLeftRightCheck(lr_check)
-    depth.setExtendedDisparity(extended_disparity)
-    depth.setSubpixel(subpixel)
+    depth.setLeftRightCheck(lr)
+    depth.setExtendedDisparity(ext)
+    depth.setSubpixel(sub)
 
     monoLeft.out.link(depth.left)
     monoRight.out.link(depth.right)

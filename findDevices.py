@@ -20,17 +20,20 @@ class Load_Device_Thread(QThread):
     def quit(self):
         if self.webcam and self.oak is not None:
             num_devs = '2 devices were found!'
+
         elif not self.webcam and self.oak is not None:
             num_devs = '1 device was found!'
-            print(2)
+            
         elif self.webcam and self.oak is None:
             num_devs = '1 device was found!'
-            print(3)
+            
         else:
             num_devs = 'No devices were found!'
-            print(4)
+            
 
         dlg = QMessageBox()
+        dlg.setIcon(QMessageBox.Information)
+        # dlg.setTextFormat(Qt.AlignCenter)
         
         dlg.setWindowTitle(" ")
         dlg.setText(num_devs)
@@ -44,30 +47,35 @@ def Webcam_Devices():
         return(True)
 
 def OAK_USB_Devices():
-    devices = []
-    for device in dai.Device.getAllAvailableDevices():
-        mxId = device.getMxId()
-        
-        info = dai.DeviceInfo(mxId) # MXID
-        #device_info = depthai.DeviceInfo("192.168.1.44") # IP Address
-        #device_info = depthai.DeviceInfo("3.3.3") # USB port name
-        pipeline = dai.Pipeline()
-        en_cam_list = []
-        with dai.Device(pipeline, info, usb2Mode=True) as dev:
-            cameras = dev.getConnectedCameras()
-            for cam in cameras:
-                if str(cam) == 'CameraBoardSocket.RGB':
-                    en_cam_list.append('Color Camera')
-                elif str(cam) == 'CameraBoardSocket.LEFT':
-                    en_cam_list.append('Mono Left Camera')
-                elif str(cam) == 'CameraBoardSocket.RIGHT':
-                    en_cam_list.append('Mono Right Camera')
-            en_cam_list.append('Stereo')
-        info_dict = {mxId:en_cam_list}
-        devices.append(info_dict)
+    try:
+        devices = []
+        for device in dai.Device.getAllAvailableDevices():
+            mxId = device.getMxId()
+            
+            info = dai.DeviceInfo(mxId) # MXID
+            #device_info = depthai.DeviceInfo("192.168.1.44") # IP Address
+            #device_info = depthai.DeviceInfo("3.3.3") # USB port name
+            pipeline = dai.Pipeline()
+            en_cam_list = []
+            with dai.Device(pipeline, info, usb2Mode=True) as dev:
+                cameras = dev.getConnectedCameras()
+                for cam in cameras:
+                    if str(cam) == 'CameraBoardSocket.RGB':
+                        en_cam_list.append('Color Camera')
+                    elif str(cam) == 'CameraBoardSocket.LEFT':
+                        en_cam_list.append('Mono Left Camera')
+                    elif str(cam) == 'CameraBoardSocket.RIGHT':
+                        en_cam_list.append('Mono Right Camera')
+                en_cam_list.append('Stereo')
+            info_dict = {mxId:en_cam_list}
+            devices.append(info_dict)
+        if len(devices) == 0:
+            return(None)
+        else:
+            return(devices)
 
-    return(devices)
-
+    except Exception:
+        return(None)
 
 
 

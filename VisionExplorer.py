@@ -8,11 +8,11 @@ from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
 from findDevices import OAK_USB_Devices, Webcam_Devices, Load_Device_Thread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
-from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon
+from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon, QCursor
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox, QDockWidget, QToolTip)
 #https://icons8.com
 #                    
 class Window(QMainWindow):
@@ -34,12 +34,11 @@ class Window(QMainWindow):
         else:
             return False
 
-    def mouseDoubleClickEvent(self, event):
-        # print(self.table.item(0,0).text())
-        # if self.pause.isEnabled() or self.master_mode == 'live' or self.table.item(0,0).text().lower().endswith(self.mixed_formats) or not os.path.isdir(self.table.item(0,0).text()):
-            
-        #     return
+    def popups(self,row,column):
+        item = self.table.item(row,column)
+        print(item.text())
 
+    def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
             widget = self.childAt(event.position().x(),event.position().y())
             widgets = self.contentwidget.findChildren(QLabel)
@@ -50,7 +49,7 @@ class Window(QMainWindow):
             elif widget is not None and widget.objectName() and not self.pause.isEnabled():
                 self.playback_mode = 'idle'
                 self.active_widget = widget
-                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode)
+                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
                 widget.setStyleSheet("border: 5px solid green;")
                 for w in widgets:
                     if w.objectName():
@@ -90,13 +89,42 @@ class Window(QMainWindow):
     def enableWindow(self):
         self.window().setDisabled(0)
 
+    def enableAutoExp(self):
+        if self.auto_button.isChecked() == True:
+            self.autoexp = False
+            # self.focus_slider.setDisabled(0)
+            self.exp_slider.setDisabled(0)
+            self.iso_slider.setDisabled(0)
+            self.brightness_slider.setDisabled(0)
+            self.contrast_slider.setDisabled(0)
+            self.saturation_slider.setDisabled(0)
+            self.sharpness_slider.setDisabled(0)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.auto_button.setStyleSheet('color:white; background-color:red')
+            self.auto_button.setText('Off')
+            
+            
+        elif self.auto_button.isChecked() == False:
+            self.autoexp = True
+            # self.focus_slider.setDisabled(1)
+            self.exp_slider.setDisabled(1)
+            self.iso_slider.setDisabled(1)
+            self.brightness_slider.setDisabled(1)
+            self.contrast_slider.setDisabled(1)
+            self.saturation_slider.setDisabled(1)
+            self.sharpness_slider.setDisabled(1)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.auto_button.setStyleSheet('color:white; background-color:green')
+            self.auto_button.setText('On')
+
+
     def enableLiveMode(self):
         if self.master_mode == 'offline':
             self.record.setEnabled(1)
             self.master_mode = 'live'
             self.mode_label.setText('Live')
             self.mode_label.setStyleSheet('color:green')
-            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(1)
@@ -109,7 +137,7 @@ class Window(QMainWindow):
             self.master_mode = 'offline'
             self.mode_label.setText('Offline')
             self.mode_label.setStyleSheet('color:red')
-            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(0)
@@ -136,6 +164,7 @@ class Window(QMainWindow):
 
     def show_progress(self):
         self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
+        self.dev_dlg.setWindowTitle(" ")
         self.dev_dlg.show()
     
     def update_progress(self,value):
@@ -165,6 +194,8 @@ class Window(QMainWindow):
                     self.cam_action = QAction(cam,self)
                     self.cam_action.triggered.connect(self.oak_found)
                     self.oak_sub.addAction(self.cam_action)
+
+            # self.make_cam_control_display()
                 
         
         self.refresh_action = QAction("Refresh Available Devices")
@@ -193,6 +224,16 @@ class Window(QMainWindow):
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
+
+        
+        self.autoexp = True
+        self.focus = 150
+        self.exposure = 20000
+        self.iso = 800
+        self.brightness = 0 #-10 to 10
+        self.contrast = 0
+        self.saturation = 0
+        self.sharpness = 0 #0-4
 
 
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
@@ -249,9 +290,12 @@ class Window(QMainWindow):
         rightlayout = QVBoxLayout()
         self.table = QTableWidget(100, 100, self)
         self.table.cellChanged.connect(self.set_source)
+        self.table.cellDoubleClicked.connect(self.popups)
         self.table.setStyleSheet("background-color:white")
+       
         rightlayout.addWidget(self.table)
         rightlayout.addWidget(self.fpslabel)
+        rightlayout.setStretch(100,100)
         # rightlayout.setContentsMargins(75,0,0,0)
         rightlayout.setSpacing(5)
         rightlayout.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
@@ -267,6 +311,8 @@ class Window(QMainWindow):
         self.scroll_layout = QHBoxLayout()
         self.playback_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+        self.camcontrol_layout = QHBoxLayout()
+        self.camcontrolwidget = QWidget()
 
         self.layout = QVBoxLayout()
         self.layout.addLayout(toplayout)
@@ -289,8 +335,28 @@ class Window(QMainWindow):
         self.refresh_action.triggered.connect(self.run_deviceth)
         self.menu_device.addAction(self.refresh_action)
 
+        self.toolbox = QDockWidget()
+        self.toolbox.setStyleSheet("color:white; background-color: #26242f")
+        self.toolbox.setWindowTitle("Toolbox")
+        self.toolbox.setFloating(False)
+        self.toolbox.setAllowedAreas(Qt.RightDockWidgetArea)
+        self.toolbox_widget = QWidget()
+        self.toolbox.setWidget(self.toolbox_widget)
+        self.toolbox_widget.setLayout(QVBoxLayout())
+        self.toolbox_widget.setStyleSheet("color:white; background-color: #26242f")
 
+        self.test = QDockWidget()
+        self.test.setStyleSheet("color:white; background-color: #26242f")
+        self.test.setWindowTitle("Test")
+        self.test.setFloating(False)
+        self.test.setAllowedAreas(Qt.RightDockWidgetArea)
 
+        self.findline = QPushButton("Edges")
+        self.toolbox_widget.layout().addWidget(self.findline)
+
+        self.addDockWidget(Qt.RightDockWidgetArea,self.toolbox)
+        # self.tabifyDockWidget(self.toolbox,self.test)
+       
 
         # self.menu_about = self.menu.addMenu("&About")
         # about = QAction("About Qt", self, shortcut=QKeySequence(QKeySequence.HelpContents),
@@ -335,6 +401,7 @@ class Window(QMainWindow):
         self.button_layout.deleteLater()
         self.pb_widget.deleteLater()
 
+
         self.bottomlayout = QHBoxLayout()
         self.scrollArea = QScrollArea()
         self.contentwidget = QWidget()
@@ -342,11 +409,13 @@ class Window(QMainWindow):
         self.scroll_layout = QHBoxLayout()
         self.playback_layout = QVBoxLayout()
         self.button_layout = QHBoxLayout()
+        self.fr_layout = QHBoxLayout()
+
 
         self.pb_title = QLabel()
         self.pb_title.setText("Frame Review")
         self.pb_title.setMaximumWidth(250)
-        self.pb_title.setMaximumHeight(10)
+        self.pb_title.setMaximumHeight(15)
         self.pb_title.setAlignment(Qt.AlignCenter)
         self.pb_title.setStyleSheet("color:gray;font-weight:bold")
 
@@ -387,22 +456,20 @@ class Window(QMainWindow):
         self.delay.sliderMoved.connect(self.slider_position)
 
         self.fr_display = QLabel()
-        self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
-        self.fr_display.setMaximumWidth(275)
-        self.fr_display.setMaximumHeight(10)
+        self.fr_display.setText("Frame Delay: ")
         self.fr_display.setAlignment(Qt.AlignCenter)
         self.fr_display.setStyleSheet("color:gray;font-weight:bold")
 
         self.contentwidget.setLayout(self.scroll_layout)
         self.pb_widget.setObjectName("pbwidget")
         self.pb_widget.setLayout(self.playback_layout)
-        self.pb_widget.setFixedHeight(160)
+        self.pb_widget.setFixedHeight(175)
         self.pb_widget.setFixedWidth(275)
         self.pb_widget.setStyleSheet("QWidget#pbwidget {border:1px solid white}")
         
         self.scrollArea.setObjectName("scrollarea")
         self.scrollArea.setWidget(self.contentwidget)
-        self.scrollArea.setFixedHeight(160)
+        self.scrollArea.setFixedHeight(175)
         self.scrollArea.setWidgetResizable(True)
         self.scrollArea.setStyleSheet("QWidget#scrollarea {border:1px solid white}")
         
@@ -411,11 +478,14 @@ class Window(QMainWindow):
         self.button_layout.addWidget(self.play)
         self.button_layout.addWidget(self.record)
 
+        self.fr_layout.addWidget(self.fr_display)
+        self.fr_layout.addWidget(self.delay)
+
         self.playback_layout.addWidget(self.pb_title)
         self.playback_layout.addLayout(self.button_layout)
-        self.playback_layout.addWidget(self.delay)
-        self.playback_layout.addWidget(self.fr_display)
+        self.playback_layout.addLayout(self.fr_layout)
 
+        
         self.bottomlayout.addWidget(self.pb_widget)
         self.bottomlayout.addWidget(self.scrollArea)
         self.layout.addLayout(self.bottomlayout)
@@ -459,6 +529,211 @@ class Window(QMainWindow):
         self.contentwidget.setLayout(self.scroll_layout)
         self.pb_widget.setLayout(self.playback_layout)
 
+    def make_cam_control_display(self):
+        foreground = "green"
+        color = "gray"
+        disabledForeground = "red"
+        disabledColor = color
+        bold = "bold"
+        button_style = ":enabled { color: " + foreground + "; background-color: " + color + "; font-weight:  " + bold + " } :disabled { color: " + disabledForeground + "; background-color: " + disabledColor + "; font-weight:  " + bold + " }"
+
+        delay_style = 'QSlider::groove:horizontal {\
+                        border: 1px solid gray;\
+                        height: 8px; /* the groove expands to the size of the slider by default. by giving it a height, it has a fixed size */\
+                        background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B1B1B1, stop:1 #c4c4c4);\
+                        margin: 2px 0;\
+                        }\
+                        QSlider::handle:horizontal {\
+                            background: qlineargradient(x1:0, y1:0, x2:1, y2:1, stop:0 #b4b4b4, stop:1 #8f8f8f);\
+                            border: 1px solid black;\
+                            width: 18px;\
+                            margin: -2px 0; /* handle is placed by default on the contents rect of the groove. Expand outside the groove */\
+                            border-radius: 3px;\
+                        }'
+
+        self.camcontrol_layout.deleteLater()
+        self.camcontrolwidget.deleteLater()
+
+        self.camcontrol_layout = QVBoxLayout()
+        self.camcontrolwidget = QWidget()
+        self.exp_layout = QHBoxLayout()
+        self.iso_layout = QHBoxLayout()
+        self.auto_layout = QHBoxLayout()
+        self.focus_layout = QHBoxLayout()
+        self.brightness_layout = QHBoxLayout()
+        self.contrast_layout = QHBoxLayout()
+        self.saturation_layout = QHBoxLayout()
+        self.sharpness_layout = QHBoxLayout()
+
+        self.camcontrol_title = QLabel()
+        self.camcontrol_title.setText("OAK Camera Settings")
+        self.camcontrol_title.setMaximumWidth(250)
+        self.camcontrol_title.setMaximumHeight(15)
+        self.camcontrol_title.setAlignment(Qt.AlignCenter)
+        self.camcontrol_title.setStyleSheet("color:gray;font-weight:bold")
+
+        self.auto_title = QLabel()
+        self.auto_title.setText("Auto: ")
+        self.auto_title.setAlignment(Qt.AlignLeft)
+        self.auto_title.setStyleSheet("color:gray;font-weight:bold")
+
+        self.auto_button = QPushButton()
+        self.auto_button.setCheckable(True)
+        self.auto_button.setText('On')
+        self.auto_button.setFixedWidth(160)
+        self.auto_button.setFixedHeight(15)
+        self.auto_button.setStyleSheet("color:white; background-color:green")
+        self.auto_button.clicked.connect(self.enableAutoExp)
+
+        self.focus_title = QLabel()
+        self.focus_title.setText("Focus: ")
+        self.focus_title.setAlignment(Qt.AlignLeft)
+        self.focus_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.focus_slider = QSlider(Qt.Horizontal)
+        self.focus_slider.setStyleSheet(delay_style)
+        self.focus_slider.setRange(1,255)
+        self.focus_slider.setSliderPosition(self.focus)
+        self.focus_slider.setSingleStep(3)
+        self.focus_slider.setMaximumWidth(160)
+        self.focus_slider.setDisabled(1)
+        self.focus_slider.sliderMoved.connect(self.focus_position)
+
+        self.exp_title = QLabel()
+        self.exp_title.setText("Exposure: ")
+        self.exp_title.setAlignment(Qt.AlignLeft)
+        self.exp_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.exp_slider = QSlider(Qt.Horizontal)
+        self.exp_slider.setStyleSheet(delay_style)
+        self.exp_slider.setRange(100,30000)
+        self.exp_slider.setSliderPosition(self.exposure)
+        self.exp_slider.setSingleStep(500)
+        self.exp_slider.setMaximumWidth(160)
+        self.exp_slider.setDisabled(1)
+        self.exp_slider.sliderMoved.connect(self.exp_position)
+
+        self.iso_title = QLabel()
+        self.iso_title.setText("ISO Sensitivity: ")
+        self.iso_title.setAlignment(Qt.AlignLeft)
+        self.iso_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.iso_slider = QSlider(Qt.Horizontal)
+        self.iso_slider.setStyleSheet(delay_style)
+        self.iso_slider.setRange(100,1600)
+        self.iso_slider.setSliderPosition(self.iso)
+        self.iso_slider.setSingleStep(50)
+        self.iso_slider.setMaximumWidth(160)
+        self.iso_slider.setDisabled(1)
+        self.iso_slider.sliderMoved.connect(self.iso_position)
+
+        self.brightness_title = QLabel()
+        self.brightness_title.setText("Brightness: ")
+        self.brightness_title.setAlignment(Qt.AlignLeft)
+        self.brightness_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.brightness_slider = QSlider(Qt.Horizontal)
+        self.brightness_slider.setStyleSheet(delay_style)
+        self.brightness_slider.setRange(-10,10)
+        self.brightness_slider.setSliderPosition(self.brightness)
+        self.brightness_slider.setSingleStep(1)
+        self.brightness_slider.setMaximumWidth(160)
+        self.brightness_slider.setDisabled(1)
+        self.brightness_slider.sliderMoved.connect(self.brightness_position)
+
+        self.contrast_title = QLabel()
+        self.contrast_title.setText("Contrast: ")
+        self.contrast_title.setAlignment(Qt.AlignLeft)
+        self.contrast_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.contrast_slider = QSlider(Qt.Horizontal)
+        self.contrast_slider.setStyleSheet(delay_style)
+        self.contrast_slider.setRange(-10,10)
+        self.contrast_slider.setSliderPosition(self.contrast)
+        self.contrast_slider.setSingleStep(1)
+        self.contrast_slider.setMaximumWidth(160)
+        self.contrast_slider.setDisabled(1)
+        self.contrast_slider.sliderMoved.connect(self.contrast_position)
+
+        self.saturation_title = QLabel()
+        self.saturation_title.setText("Saturation: ")
+        self.saturation_title.setAlignment(Qt.AlignLeft)
+        self.saturation_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.saturation_slider = QSlider(Qt.Horizontal)
+        self.saturation_slider.setStyleSheet(delay_style)
+        self.saturation_slider.setRange(-10,10)
+        self.saturation_slider.setSliderPosition(self.saturation)
+        self.saturation_slider.setSingleStep(1)
+        self.saturation_slider.setMaximumWidth(160)
+        self.saturation_slider.setDisabled(1)
+        self.saturation_slider.sliderMoved.connect(self.saturation_position)
+
+        self.sharpness_title = QLabel()
+        self.sharpness_title.setText("Sharpness: ")
+        self.sharpness_title.setAlignment(Qt.AlignLeft)
+        self.sharpness_title.setStyleSheet("color:gray;font-weight:bold")
+
+
+        self.sharpness_slider = QSlider(Qt.Horizontal)
+        self.sharpness_slider.setStyleSheet(delay_style)
+        self.sharpness_slider.setRange(0,4)
+        self.sharpness_slider.setSliderPosition(self.sharpness)
+        self.sharpness_slider.setSingleStep(1)
+        self.sharpness_slider.setMaximumWidth(160)
+        self.sharpness_slider.setDisabled(1)
+        self.sharpness_slider.sliderMoved.connect(self.sharpness_position)
+
+        self.camcontrolwidget.setObjectName("camwidget")
+        self.camcontrolwidget.setLayout(self.camcontrol_layout)
+        self.camcontrolwidget.setFixedHeight(175)
+        self.camcontrolwidget.setFixedWidth(275)
+        self.camcontrolwidget.setStyleSheet("QWidget#camwidget {border:1px solid white}")
+
+        
+        self.auto_layout.addWidget(self.auto_title)
+        self.auto_layout.addWidget(self.auto_button)
+
+        self.focus_layout.addWidget(self.focus_title)
+        self.focus_layout.addWidget(self.focus_slider)
+
+        self.exp_layout.addWidget(self.exp_title)
+        self.exp_layout.addWidget(self.exp_slider)
+
+        self.iso_layout.addWidget(self.iso_title)
+        self.iso_layout.addWidget(self.iso_slider)
+
+        self.brightness_layout.addWidget(self.brightness_title)
+        self.brightness_layout.addWidget(self.brightness_slider)
+
+        self.contrast_layout.addWidget(self.contrast_title)
+        self.contrast_layout.addWidget(self.contrast_slider)
+
+        self.saturation_layout.addWidget(self.saturation_title)
+        self.saturation_layout.addWidget(self.saturation_slider)
+
+        self.sharpness_layout.addWidget(self.sharpness_title)
+        self.sharpness_layout.addWidget(self.sharpness_slider) 
+
+        self.camcontrol_layout.addWidget(self.camcontrol_title)
+        self.camcontrol_layout.addLayout(self.auto_layout)
+        # self.camcontrol_layout.addLayout(self.focus_layout)
+        self.camcontrol_layout.addLayout(self.exp_layout)
+        self.camcontrol_layout.addLayout(self.iso_layout)
+        self.camcontrol_layout.addLayout(self.brightness_layout)
+        self.camcontrol_layout.addLayout(self.contrast_layout)
+        self.camcontrol_layout.addLayout(self.saturation_layout)
+        self.camcontrol_layout.addLayout(self.sharpness_layout)
+
+
+        self.bottomlayout.addWidget(self.camcontrolwidget)
+
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls() and not self.scrollth.isRunning() and self.master_mode != 'live':
             e.accept()
@@ -479,7 +754,49 @@ class Window(QMainWindow):
 
     def slider_position(self,p):
         self.frame_rate = p
-        self.fr_display.setText("Frame Delay: "+str(int(1000/self.frame_rate))+" ms")
+        QToolTip.showText(QCursor.pos(),str(int(1000/self.frame_rate))+" ms")
+
+    def focus_position(self,p):
+        self.focus = p
+        QToolTip.showText(QCursor.pos(),str(self.focus))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+
+    def exp_position(self,p):
+        self.exposure = p
+        event = 'exposure'
+        QToolTip.showText(QCursor.pos(),str(self.exposure)+" us")
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+
+    def iso_position(self,p):
+        self.iso = p
+        event = 'iso'
+        QToolTip.showText(QCursor.pos(),str(self.iso))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+
+    def brightness_position(self,p):
+        self.brightness = p
+        event = 'brightness'
+        QToolTip.showText(QCursor.pos(),str(self.brightness))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+
+    def contrast_position(self,p):
+        self.contrast = p
+        event = 'contrast'
+        QToolTip.showText(QCursor.pos(),str(self.contrast))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+
+    def saturation_position(self,p):
+        self.saturation = p
+        event = 'saturation'
+        QToolTip.showText(QCursor.pos(),str(self.saturation))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+
+    def sharpness_position(self,p):
+        self.sharpness = p
+        event = 'sharpness'
+        QToolTip.showText(QCursor.pos(),str(self.sharpness))
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
+        
 
     @Slot()
     def closeEvent(self,event):
@@ -496,7 +813,9 @@ class Window(QMainWindow):
     @Slot()
     def set_source(self):
         if self.table.item(0,0) and not self.scrollth.isRunning():
-            self.th.set_file(self.table.item(0,0),0,self.master_mode)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            if self.oak is not None:
+                self.make_cam_control_display()
 
             
         if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
@@ -516,6 +835,8 @@ class Window(QMainWindow):
             self.clear_scroll_layout()
             self.create_scroll_layout()
             self.record.setEnabled(0)
+            if self.oak is not None:
+                self.make_cam_control_display()
     
     def calc_ave_fps(self,fps):
         self.ave_fps.append(fps)
@@ -603,7 +924,7 @@ class Window(QMainWindow):
         i+=1
         self.play.setDisabled(1)
         self.play.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i,self.master_mode)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -648,7 +969,7 @@ class Window(QMainWindow):
         i-=1
         self.rewind.setDisabled(1)
         self.rewind.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i,self.master_mode)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -692,7 +1013,7 @@ class Window(QMainWindow):
     def pauseButtonClicked(self):
         self.pause.setDisabled(1)
         self.pause.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()),self.master_mode)
+        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
         widgets = self.contentwidget.findChildren(QLabel)
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -740,6 +1061,8 @@ class Window(QMainWindow):
                 self.create_scroll_layout()
                 self.mode_button.setDisabled(0)
                 self.record.setDisabled(0)
+                if self.oak is not None:
+                    self.make_cam_control_display()
 
 
                                 
