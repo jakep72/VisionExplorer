@@ -44,7 +44,7 @@ class Thread(QThread):
     def run(self):
         while True:
             self.status = True
-              
+            
             if self.image_source != None:
 
                 ##### Video or Image files -- offline mode only #####
@@ -167,40 +167,28 @@ class Thread(QThread):
                         video = device.getOutputQueue(name="video", maxSize=1, blocking=False)
                         controlQ = device.getInputQueue(name='control',maxSize = 8,blocking=False)
 
+                        if self.auto == False:
+                            ctrl = dai.CameraControl()
+                            ctrl.setManualExposure(self.exposure,self.iso)
+                            ctrl.setContrast(self.contrast)
+                            ctrl.setSaturation(self.saturation)
+                            ctrl.setSharpness(self.sharpness)
+                            controlQ.send(ctrl)
+                            time.sleep(2)
+                        else:
+                            ctrl = dai.CameraControl()
+                            ctrl.setAutoExposureLock(True)
+                            ctrl.setContrast(self.contrast)
+                            ctrl.setSaturation(self.saturation)
+                            ctrl.setSharpness(self.sharpness)
+                            controlQ.send(ctrl)
+                            time.sleep(2)                            
+
                         if self.master_mode == 'live':
                             while self.status:
                                 s = time.time()
                                 if self.image_source != None and self.image_source != source:
                                     self.status = False
-
-                                ctrl = dai.CameraControl()
-
-                                if self.auto == True:
-                                    # ctrl.setAutoExposureEnable()
-                                    # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                    ctrl.setBrightness(0)
-                                    ctrl.setContrast(0)
-                                    ctrl.setSaturation(0)
-                                    ctrl.setSharpness(0)
-                                    
-                                    controlQ.send(ctrl)
-
-                                elif self.auto == False:
-                                    # ctrl.setManualExposure(self.exposure,self.iso)
-                                    if self.event == 'brightness':
-                                        ctrl.setBrightness(self.brightness)
-                                        controlQ.send(ctrl)
-                                    elif self.event == 'contrast':
-                                        ctrl.setContrast(self.contrast)
-                                        controlQ.send(ctrl)
-                                    elif self.event == 'saturation':
-                                        ctrl.setSaturation(self.saturation)
-                                        controlQ.send(ctrl)
-                                    elif self.event == 'sharpness':
-                                        ctrl.setSharpness(self.sharpness)
-                                        controlQ.send(ctrl)
-                                
-                                # controlQ.send(ctrl)
                                 
                                 videoIn = video.get()
                                 frame = videoIn.getCvFrame()
@@ -212,7 +200,6 @@ class Thread(QThread):
                                 delta = 1000*(e-s)
                                 self.updateFrame.emit([img,delta])
                                 
-                                
                                 if self.master_mode == 'live':
                                     pass
                                 else:
@@ -222,26 +209,7 @@ class Thread(QThread):
                         elif self.master_mode == 'offline':
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
-                            
-                            ctrl = dai.CameraControl()
-                            if self.auto == True:
-                                # ctrl.setAutoExposureEnable()
-                                # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                ctrl.setBrightness(0)
-                                ctrl.setContrast(0)
-                                ctrl.setSaturation(0)
-                                ctrl.setSharpness(0)
-                                # controlQ.send(ctrl)
 
-                            elif self.auto == False:
-                                # ctrl.setManualExposure(self.exposure,self.iso)
-                                ctrl.setBrightness(self.brightness)
-                                ctrl.setContrast(self.contrast)
-                                ctrl.setSaturation(self.saturation)
-                                ctrl.setSharpness(self.sharpness)
-                            
-
-                            controlQ.send(ctrl)
                             videoIn = video.get()
                             frame = videoIn.getCvFrame()
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -255,46 +223,113 @@ class Thread(QThread):
                                         self.status = False
                                         break
                                     else:
-                                        pass
+                                        if self.event == 'exposure' or self.event == 'iso':
+                                            ctrl.setManualExposure(self.exposure,self.iso)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            videoIn = video.get()
+                                            frame = videoIn.getCvFrame()
+                                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                            h, w, ch = frame.shape
+                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                            
+                                        elif self.event == 'contrast':
+                                            ctrl.setContrast(self.contrast)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            videoIn = video.get()
+                                            frame = videoIn.getCvFrame()
+                                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                            h, w, ch = frame.shape
+                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                        elif self.event == 'saturation':
+                                            ctrl.setSaturation(self.saturation)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            videoIn = video.get()
+                                            frame = videoIn.getCvFrame()
+                                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                            h, w, ch = frame.shape
+                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                        elif self.event == 'sharpness':
+                                            ctrl.setSharpness(self.sharpness)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            videoIn = video.get()
+                                            frame = videoIn.getCvFrame()
+                                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                            h, w, ch = frame.shape
+                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                        elif self.event == 'AutoOn':
+                                            ctrl.setAutoExposureEnable()
+                                            ctrl.setContrast(0)
+                                            ctrl.setSaturation(0)
+                                            ctrl.setSharpness(0)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            videoIn = video.get()
+                                            frame = videoIn.getCvFrame()
+                                            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                                            h, w, ch = frame.shape
+                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                            break
+                                        else:
+                                            pass
+
                                 elif self.master_mode == 'live':
                                     self.status = False
                                     break
                                     
                 ##### OAK-D LITE Right Mono Camera -- offline and live mode #####
-                elif self.image_source.split('_')[1] == 'MonoRight':
+                elif self.image_source.split('_')[1] == 'MonoRight' or self.image_source.split('_')[1] == 'MonoLeft':
                     source = self.image_source
                     info = dai.DeviceInfo(source.split('_')[0])
-                    pipeline = make_mono_right_pipe()
+                    if self.image_source.split('_')[1] == 'MonoRight': 
+                        pipeline = make_mono_right_pipe()
+                    elif self.image_source.split('_')[1] == 'MonoLeft':
+                        pipeline = make_mono_left_pipe()
                     # Connect to device and start pipeline
                     with dai.Device(pipeline,info,usb2Mode=True) as device:
 
-                        qRight = device.getOutputQueue(name="right", maxSize=1, blocking=False)
-                        controlQ = device.getInputQueue(name='control')
-
+                        if self.image_source.split('_')[1] == 'MonoRight': 
+                            qRight = device.getOutputQueue(name="right", maxSize=1, blocking=False)
+                        elif self.image_source.split('_')[1] == 'MonoLeft':
+                            qRight = device.getOutputQueue(name="left", maxSize=1, blocking=False)
+                        
+                        if self.auto == False:
+                            controlQ = device.getInputQueue(name='control')
+                            ctrl = dai.CameraControl()
+                            ctrl.setManualExposure(self.exposure,self.iso)
+                            controlQ.send(ctrl)
+                            time.sleep(1)
+                        else:
+                            controlQ = device.getInputQueue(name='control')
+                            ctrl = dai.CameraControl()
+                            ctrl.setAutoExposureLock(True)
+                            controlQ.send(ctrl)
+                            time.sleep(1)
+                        
 
                         if self.master_mode == 'live':
                             while self.status:
                                 s = time.time()
                                 if self.image_source != None and self.image_source != source:
                                     self.status = False
-                                ctrl = dai.CameraControl()
-                                if self.auto == True:
-                                    ctrl.setAutoExposureEnable()
-                                    # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                    # ctrl.setBrightness(0)
-                                    # ctrl.setContrast(0)
-                                    # ctrl.setSaturation(0)
-                                    # ctrl.setSharpness(0)
-                                    # controlQ.send(ctrl)
-
-                                elif self.auto == False:
-                                    ctrl.setManualExposure(self.exposure,self.iso)
-                                    # ctrl.setBrightness(self.brightness)
-                                    # ctrl.setContrast(self.contrast)
-                                    # ctrl.setSaturation(self.saturation)
-                                    # ctrl.setSharpness(self.sharpness)
-                                
-                                controlQ.send(ctrl)
 
 
                                 inRight = qRight.get()
@@ -317,25 +352,6 @@ class Thread(QThread):
                             if self.image_source != None and self.image_source != source:
                                 self.status = False
 
-                            ctrl = dai.CameraControl()
-                            if self.auto == True:
-                                ctrl.setAutoExposureEnable()
-                                # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                # ctrl.setBrightness(0)
-                                # ctrl.setContrast(0)
-                                # ctrl.setSaturation(0)
-                                # ctrl.setSharpness(0)
-                                # controlQ.send(ctrl)
-
-                            elif self.auto == False:
-                                ctrl.setManualExposure(self.exposure,self.iso)
-                                # ctrl.setBrightness(self.brightness)
-                                # ctrl.setContrast(self.contrast)
-                                # ctrl.setSaturation(self.saturation)
-                                # ctrl.setSharpness(self.sharpness)
-                            
-                            controlQ.send(ctrl)
-                            time.sleep(1)
                             inRight = qRight.get()
                             frame = inRight.getCvFrame()
 
@@ -349,98 +365,33 @@ class Thread(QThread):
                                         self.status = False
                                         break
                                     else:
-                                        pass
-                                elif self.master_mode == 'live':
-                                    self.status = False
-                                    break
+                                        if self.event == 'exposure' or self.event == 'iso':
+                                            ctrl.setManualExposure(self.exposure,self.iso)
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            inRight = qRight.get()
+                                            frame = inRight.getCvFrame()
 
-                ##### OAK-D LITE Left Mono Camera -- offline and live mode #####
-                elif self.image_source.split('_')[1] == 'MonoLeft':
-                    source = self.image_source
-                    info = dai.DeviceInfo(source.split('_')[0])
-                    pipeline = make_mono_left_pipe()
-                    # Connect to device and start pipeline
-                    with dai.Device(pipeline,info,usb2Mode=True) as device:
+                                            h, w  = frame.shape
+                                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                        elif self.event == 'AutoOn':
+                                            ctrl.setAutoExposureEnable()
+                                            controlQ.send(ctrl)
+                                            time.sleep(1)
+                                            self.event = None
+                                            inRight = qRight.get()
+                                            frame = inRight.getCvFrame()
 
-                        qLeft = device.getOutputQueue(name="left", maxSize=1, blocking=False)
-                        controlQ = device.getInputQueue(name='control')
-
-                        if self.master_mode == 'live':
-                            while self.status:
-                                s = time.time()
-                                if self.image_source != None and self.image_source != source:
-                                    self.status = False
-                                ctrl = dai.CameraControl()
-                                if self.auto == True:
-                                    ctrl.setAutoExposureEnable()
-                                    # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                    # ctrl.setBrightness(0)
-                                    # ctrl.setContrast(0)
-                                    # ctrl.setSaturation(0)
-                                    # ctrl.setSharpness(0)
-                                    # controlQ.send(ctrl)
-
-                                elif self.auto == False:
-                                    ctrl.setManualExposure(self.exposure,self.iso)
-                                    # ctrl.setBrightness(self.brightness)
-                                    # ctrl.setContrast(self.contrast)
-                                    # ctrl.setSaturation(self.saturation)
-                                    # ctrl.setSharpness(self.sharpness)
-                                
-                                controlQ.send(ctrl)
-
-                                inLeft = qLeft.get()
-                                frame = inLeft.getCvFrame()
-                                h, w  = frame.shape
-                                img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                                img = img.scaled(720, 480)
-                                e = time.time()
-                                delta = 1000*(e-s)
-                                self.updateFrame.emit([img,delta])
-                                
-
-                                if self.master_mode == 'live':
-                                    pass
-                                else:
-                                    self.status = False
-                                    break
-                        
-                        elif self.master_mode == 'offline':
-                            if self.image_source != None and self.image_source != source:
-                                self.status = False
-
-                            ctrl = dai.CameraControl()
-                            if self.auto == True:
-                                ctrl.setAutoExposureEnable()
-                                # ctrl.setAutoFocusMode(dai.CameraControl.AutoFocusMode.CONTINUOUS_VIDEO)
-                                # ctrl.setBrightness(0)
-                                # ctrl.setContrast(0)
-                                # ctrl.setSaturation(0)
-                                # ctrl.setSharpness(0)
-                                # controlQ.send(ctrl)
-
-                            elif self.auto == False:
-                                ctrl.setManualExposure(self.exposure,self.iso)
-                                # ctrl.setBrightness(self.brightness)
-                                # ctrl.setContrast(self.contrast)
-                                # ctrl.setSaturation(self.saturation)
-                                # ctrl.setSharpness(self.sharpness)
-                            
-                            controlQ.send(ctrl)
-                            time.sleep(1)
-                            inLeft = qLeft.get()
-                            frame = inLeft.getCvFrame()
-                            h, w  = frame.shape
-                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                            img = img.scaled(720, 480)
-                            self.updateFrame.emit([img,None])
-                            while self.status:
-                                if self.master_mode == 'offline':
-                                    if self.image_source != source:
-                                        self.status = False
-                                        break
-                                    else:
-                                        pass
+                                            h, w  = frame.shape
+                                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                            img = img.scaled(720, 480)
+                                            self.updateFrame.emit([img,None])
+                                            break
+                                        else:
+                                            pass
                                 elif self.master_mode == 'live':
                                     self.status = False
                                     break

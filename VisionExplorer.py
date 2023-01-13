@@ -92,10 +92,8 @@ class Window(QMainWindow):
     def enableAutoExp(self):
         if self.auto_button.isChecked() == True:
             self.autoexp = False
-            # self.focus_slider.setDisabled(0)
             self.exp_slider.setDisabled(0)
             self.iso_slider.setDisabled(0)
-            self.brightness_slider.setDisabled(0)
             self.contrast_slider.setDisabled(0)
             self.saturation_slider.setDisabled(0)
             self.sharpness_slider.setDisabled(0)
@@ -106,14 +104,12 @@ class Window(QMainWindow):
             
         elif self.auto_button.isChecked() == False:
             self.autoexp = True
-            # self.focus_slider.setDisabled(1)
             self.exp_slider.setDisabled(1)
             self.iso_slider.setDisabled(1)
-            self.brightness_slider.setDisabled(1)
             self.contrast_slider.setDisabled(1)
             self.saturation_slider.setDisabled(1)
             self.sharpness_slider.setDisabled(1)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,'AutoOn')
             self.auto_button.setStyleSheet('color:white; background-color:green')
             self.auto_button.setText('On')
 
@@ -130,6 +126,12 @@ class Window(QMainWindow):
             self.table.setDisabled(1)
             self.menu_device.setDisabled(1)
             self.fpslabel.setText(" ")
+            self.auto_button.setDisabled(1)
+            self.exp_slider.setDisabled(1)
+            self.iso_slider.setDisabled(1)
+            self.contrast_slider.setDisabled(1)
+            self.saturation_slider.setDisabled(1)
+            self.sharpness_slider.setDisabled(1)
             
             
         elif self.master_mode == 'live':
@@ -144,6 +146,19 @@ class Window(QMainWindow):
             self.menu_device.setDisabled(0)
             self.ave_fps = []
             self.fpslabel.setText(" ")
+            self.auto_button.setDisabled(0)
+            if self.autoexp == False:
+                self.exp_slider.setDisabled(0)
+                self.iso_slider.setDisabled(0)
+                self.contrast_slider.setDisabled(0)
+                self.saturation_slider.setDisabled(0)
+                self.sharpness_slider.setDisabled(0)
+            else:
+                self.exp_slider.setDisabled(1)
+                self.iso_slider.setDisabled(1)
+                self.contrast_slider.setDisabled(1)
+                self.saturation_slider.setDisabled(1)
+                self.sharpness_slider.setDisabled(1)
 
     def web_found(self):
         self.table.setItem(0,0,QTableWidgetItem('Webcam'))
@@ -194,8 +209,6 @@ class Window(QMainWindow):
                     self.cam_action = QAction(cam,self)
                     self.cam_action.triggered.connect(self.oak_found)
                     self.oak_sub.addAction(self.cam_action)
-
-            # self.make_cam_control_display()
                 
         
         self.refresh_action = QAction("Refresh Available Devices")
@@ -229,7 +242,7 @@ class Window(QMainWindow):
         self.autoexp = True
         self.focus = 150
         self.exposure = 20000
-        self.iso = 800
+        self.iso = 100
         self.brightness = 0 #-10 to 10
         self.contrast = 0
         self.saturation = 0
@@ -559,8 +572,6 @@ class Window(QMainWindow):
         self.exp_layout = QHBoxLayout()
         self.iso_layout = QHBoxLayout()
         self.auto_layout = QHBoxLayout()
-        self.focus_layout = QHBoxLayout()
-        self.brightness_layout = QHBoxLayout()
         self.contrast_layout = QHBoxLayout()
         self.saturation_layout = QHBoxLayout()
         self.sharpness_layout = QHBoxLayout()
@@ -585,20 +596,6 @@ class Window(QMainWindow):
         self.auto_button.setStyleSheet("color:white; background-color:green")
         self.auto_button.clicked.connect(self.enableAutoExp)
 
-        self.focus_title = QLabel()
-        self.focus_title.setText("Focus: ")
-        self.focus_title.setAlignment(Qt.AlignLeft)
-        self.focus_title.setStyleSheet("color:gray;font-weight:bold")
-
-
-        self.focus_slider = QSlider(Qt.Horizontal)
-        self.focus_slider.setStyleSheet(delay_style)
-        self.focus_slider.setRange(1,255)
-        self.focus_slider.setSliderPosition(self.focus)
-        self.focus_slider.setSingleStep(3)
-        self.focus_slider.setMaximumWidth(160)
-        self.focus_slider.setDisabled(1)
-        self.focus_slider.sliderMoved.connect(self.focus_position)
 
         self.exp_title = QLabel()
         self.exp_title.setText("Exposure: ")
@@ -613,7 +610,7 @@ class Window(QMainWindow):
         self.exp_slider.setSingleStep(500)
         self.exp_slider.setMaximumWidth(160)
         self.exp_slider.setDisabled(1)
-        self.exp_slider.sliderMoved.connect(self.exp_position)
+        self.exp_slider.sliderReleased.connect(self.exp_position)
 
         self.iso_title = QLabel()
         self.iso_title.setText("ISO Sensitivity: ")
@@ -628,22 +625,7 @@ class Window(QMainWindow):
         self.iso_slider.setSingleStep(50)
         self.iso_slider.setMaximumWidth(160)
         self.iso_slider.setDisabled(1)
-        self.iso_slider.sliderMoved.connect(self.iso_position)
-
-        self.brightness_title = QLabel()
-        self.brightness_title.setText("Brightness: ")
-        self.brightness_title.setAlignment(Qt.AlignLeft)
-        self.brightness_title.setStyleSheet("color:gray;font-weight:bold")
-
-
-        self.brightness_slider = QSlider(Qt.Horizontal)
-        self.brightness_slider.setStyleSheet(delay_style)
-        self.brightness_slider.setRange(-10,10)
-        self.brightness_slider.setSliderPosition(self.brightness)
-        self.brightness_slider.setSingleStep(1)
-        self.brightness_slider.setMaximumWidth(160)
-        self.brightness_slider.setDisabled(1)
-        self.brightness_slider.sliderMoved.connect(self.brightness_position)
+        self.iso_slider.sliderReleased.connect(self.iso_position)
 
         self.contrast_title = QLabel()
         self.contrast_title.setText("Contrast: ")
@@ -658,7 +640,7 @@ class Window(QMainWindow):
         self.contrast_slider.setSingleStep(1)
         self.contrast_slider.setMaximumWidth(160)
         self.contrast_slider.setDisabled(1)
-        self.contrast_slider.sliderMoved.connect(self.contrast_position)
+        self.contrast_slider.sliderReleased.connect(self.contrast_position)
 
         self.saturation_title = QLabel()
         self.saturation_title.setText("Saturation: ")
@@ -673,7 +655,7 @@ class Window(QMainWindow):
         self.saturation_slider.setSingleStep(1)
         self.saturation_slider.setMaximumWidth(160)
         self.saturation_slider.setDisabled(1)
-        self.saturation_slider.sliderMoved.connect(self.saturation_position)
+        self.saturation_slider.sliderReleased.connect(self.saturation_position)
 
         self.sharpness_title = QLabel()
         self.sharpness_title.setText("Sharpness: ")
@@ -688,7 +670,7 @@ class Window(QMainWindow):
         self.sharpness_slider.setSingleStep(1)
         self.sharpness_slider.setMaximumWidth(160)
         self.sharpness_slider.setDisabled(1)
-        self.sharpness_slider.sliderMoved.connect(self.sharpness_position)
+        self.sharpness_slider.sliderReleased.connect(self.sharpness_position)
 
         self.camcontrolwidget.setObjectName("camwidget")
         self.camcontrolwidget.setLayout(self.camcontrol_layout)
@@ -700,17 +682,12 @@ class Window(QMainWindow):
         self.auto_layout.addWidget(self.auto_title)
         self.auto_layout.addWidget(self.auto_button)
 
-        self.focus_layout.addWidget(self.focus_title)
-        self.focus_layout.addWidget(self.focus_slider)
 
         self.exp_layout.addWidget(self.exp_title)
         self.exp_layout.addWidget(self.exp_slider)
 
         self.iso_layout.addWidget(self.iso_title)
         self.iso_layout.addWidget(self.iso_slider)
-
-        self.brightness_layout.addWidget(self.brightness_title)
-        self.brightness_layout.addWidget(self.brightness_slider)
 
         self.contrast_layout.addWidget(self.contrast_title)
         self.contrast_layout.addWidget(self.contrast_slider)
@@ -723,13 +700,12 @@ class Window(QMainWindow):
 
         self.camcontrol_layout.addWidget(self.camcontrol_title)
         self.camcontrol_layout.addLayout(self.auto_layout)
-        # self.camcontrol_layout.addLayout(self.focus_layout)
         self.camcontrol_layout.addLayout(self.exp_layout)
         self.camcontrol_layout.addLayout(self.iso_layout)
-        self.camcontrol_layout.addLayout(self.brightness_layout)
-        self.camcontrol_layout.addLayout(self.contrast_layout)
-        self.camcontrol_layout.addLayout(self.saturation_layout)
-        self.camcontrol_layout.addLayout(self.sharpness_layout)
+        if 'color' in self.table.item(0,0).text().lower():
+            self.camcontrol_layout.addLayout(self.contrast_layout)
+            self.camcontrol_layout.addLayout(self.saturation_layout)
+            self.camcontrol_layout.addLayout(self.sharpness_layout)
 
 
         self.bottomlayout.addWidget(self.camcontrolwidget)
@@ -756,43 +732,32 @@ class Window(QMainWindow):
         self.frame_rate = p
         QToolTip.showText(QCursor.pos(),str(int(1000/self.frame_rate))+" ms")
 
-    def focus_position(self,p):
-        self.focus = p
-        QToolTip.showText(QCursor.pos(),str(self.focus))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-
-    def exp_position(self,p):
-        self.exposure = p
+    def exp_position(self):
+        self.exposure = self.exp_slider.value()
         event = 'exposure'
         QToolTip.showText(QCursor.pos(),str(self.exposure)+" us")
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
-    def iso_position(self,p):
-        self.iso = p
+    def iso_position(self):
+        self.iso = self.iso_slider.value()
         event = 'iso'
         QToolTip.showText(QCursor.pos(),str(self.iso))
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
-    def brightness_position(self,p):
-        self.brightness = p
-        event = 'brightness'
-        QToolTip.showText(QCursor.pos(),str(self.brightness))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
-
-    def contrast_position(self,p):
-        self.contrast = p
+    def contrast_position(self):
+        self.contrast = self.contrast_slider.value()
         event = 'contrast'
         QToolTip.showText(QCursor.pos(),str(self.contrast))
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
-    def saturation_position(self,p):
-        self.saturation = p
+    def saturation_position(self):
+        self.saturation = self.saturation_slider.value()
         event = 'saturation'
         QToolTip.showText(QCursor.pos(),str(self.saturation))
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
-    def sharpness_position(self,p):
-        self.sharpness = p
+    def sharpness_position(self):
+        self.sharpness = self.sharpness_slider.value()
         event = 'sharpness'
         QToolTip.showText(QCursor.pos(),str(self.sharpness))
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)

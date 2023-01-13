@@ -17,7 +17,7 @@ def make_color_pipe():
     # Properties
     camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    camRgb.setVideoSize(720, 480)
+    # camRgb.setVideoSize(720, 480)
     camRgb.setFps(35)
 
     # xoutVideo.input.setBlocking(False)
