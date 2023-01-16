@@ -233,6 +233,7 @@ class Window(QMainWindow):
         self.recording = False
         self.image_dir = None
         self.master_mode = 'offline'
+        self.scale = 1.0
         self.saveTimer = QTimer()
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
@@ -277,6 +278,11 @@ class Window(QMainWindow):
         self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.label.installEventFilter(self)
 
+        self.mainscroll = QScrollArea()
+        self.mainscroll.setFixedSize(725,485)
+        self.mainscroll.setWidget(self.label)
+        self.mainscroll.setVisible(True)
+
         self.poslabel = QLabel(self)
         self.poslabel.setAlignment(Qt.AlignCenter)
         self.poslabel.setStyleSheet("color:white")
@@ -294,7 +300,7 @@ class Window(QMainWindow):
         # Main layout
         toplayout = QHBoxLayout()
         leftlayout = QVBoxLayout()
-        leftlayout.addWidget(self.label)
+        leftlayout.addWidget(self.mainscroll)
         leftlayout.addWidget(self.poslabel)
         leftlayout.setContentsMargins(75,0,0,0)
         leftlayout.setSpacing(5)
@@ -343,6 +349,12 @@ class Window(QMainWindow):
         self.deviceth.updateDevices.connect(self.refresh_devices)
         self.deviceth.started.connect(self.show_progress)
         self.deviceth.loaded.connect(self.update_progress)
+
+        self.viewMenu = self.menu.addMenu("View")
+        self.viewMenu.addAction(QAction("Zoom &In (25%)", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
+        self.viewMenu.addAction(QAction("Zoom &Out (25%)", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
+        self.viewMenu.addSeparator()
+        self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, checkable=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
         
         self.refresh_action = QAction("Search for Available Devices")
         self.refresh_action.triggered.connect(self.run_deviceth)
@@ -710,6 +722,30 @@ class Window(QMainWindow):
 
         self.bottomlayout.addWidget(self.camcontrolwidget)
 
+    def zoomIn(self):
+        self.scaleImage(1.25)
+
+    def zoomOut(self):
+        self.scaleImage(0.8)
+
+    def fitToWindow(self):
+        self.scale = 1.0
+
+    def scaleImage(self, factor):
+        self.scale *= factor
+        # self.imageLabel.resize(self.scaleFactor * self.imageLabel.pixmap().size())
+
+        self.adjustScrollBar(self.mainscroll.horizontalScrollBar(), factor)
+        self.adjustScrollBar(self.mainscroll.verticalScrollBar(), factor)
+
+        # self.zoomIn.setEnabled(self.scaleFactor < 3.0)
+        # self.zoomOut.setEnabled(self.scaleFactor > 0.333)
+
+    def adjustScrollBar(self, scrollBar, factor):
+        scrollBar.setValue(int(factor * scrollBar.value()
+                               + ((factor - 1) * scrollBar.pageStep() / 2)))
+    
+
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls() and not self.scrollth.isRunning() and self.master_mode != 'live':
             e.accept()
@@ -817,7 +853,9 @@ class Window(QMainWindow):
 
     @Slot(QImage)
     def setImage(self, data):
-        self.label.setPixmap(QPixmap.fromImage(data[0]))
+        img = data[0]
+        img = img.scaled(self.scale*img.width(),self.scale*img.height())
+        self.label.setPixmap(QPixmap.fromImage(img))
         self.fps = data[1]
         if self.fps is not None and self.fps !=0:
             ave_fps = self.calc_ave_fps(self.fps)
