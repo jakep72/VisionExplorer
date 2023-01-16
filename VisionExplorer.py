@@ -125,6 +125,7 @@ class Window(QMainWindow):
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(1)
             self.menu_device.setDisabled(1)
+            self.viewMenu.setDisabled(1)
             self.fpslabel.setText(" ")
             self.auto_button.setDisabled(1)
             self.exp_slider.setDisabled(1)
@@ -144,6 +145,7 @@ class Window(QMainWindow):
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(0)
             self.menu_device.setDisabled(0)
+            self.viewMenu.setDisabled(0)
             self.ave_fps = []
             self.fpslabel.setText(" ")
             self.auto_button.setDisabled(0)
@@ -273,12 +275,14 @@ class Window(QMainWindow):
         # Create a label for the display camera
         self.label = QLabel(self)
         self.label.setObjectName('MainScreen')
-        self.label.setFixedSize(720, 480)
+        self.label.resize(720,480)
+        # self.label.setFixedSize(720, 480)
         self.label.setStyleSheet("background-color:black")
         self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.label.installEventFilter(self)
 
         self.mainscroll = QScrollArea()
+        # self.mainscroll.resize(725,485
         self.mainscroll.setFixedSize(725,485)
         self.mainscroll.setWidget(self.label)
         self.mainscroll.setVisible(True)
@@ -351,10 +355,10 @@ class Window(QMainWindow):
         self.deviceth.loaded.connect(self.update_progress)
 
         self.viewMenu = self.menu.addMenu("View")
-        self.viewMenu.addAction(QAction("Zoom &In (25%)", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
-        self.viewMenu.addAction(QAction("Zoom &Out (25%)", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
+        self.viewMenu.addAction(QAction("Zoom &In", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
+        self.viewMenu.addAction(QAction("Zoom &Out", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
         self.viewMenu.addSeparator()
-        self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, checkable=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
+        self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
         
         self.refresh_action = QAction("Search for Available Devices")
         self.refresh_action.triggered.connect(self.run_deviceth)
@@ -723,18 +727,21 @@ class Window(QMainWindow):
         self.bottomlayout.addWidget(self.camcontrolwidget)
 
     def zoomIn(self):
-        self.scaleImage(1.25)
+        self.scaleImage(1.01)
 
     def zoomOut(self):
-        self.scaleImage(0.8)
+        self.scaleImage(.99)
 
     def fitToWindow(self):
-        self.scale = 1.0
+        self.label.resize(720,480)
+        self.scaled_img = self.img.scaled(720,480)
+        self.label.setPixmap(self.scaled_img)
 
     def scaleImage(self, factor):
         self.scale *= factor
-        # self.imageLabel.resize(self.scaleFactor * self.imageLabel.pixmap().size())
-
+        self.label.resize(self.scale * self.img.size())
+        self.scaled_img = self.img.scaled(self.scale*self.img.size())
+        self.label.setPixmap(self.scaled_img)
         self.adjustScrollBar(self.mainscroll.horizontalScrollBar(), factor)
         self.adjustScrollBar(self.mainscroll.verticalScrollBar(), factor)
 
@@ -853,9 +860,8 @@ class Window(QMainWindow):
 
     @Slot(QImage)
     def setImage(self, data):
-        img = data[0]
-        img = img.scaled(self.scale*img.width(),self.scale*img.height())
-        self.label.setPixmap(QPixmap.fromImage(img))
+        self.img =QPixmap.fromImage(data[0])
+        self.label.setPixmap(self.img)
         self.fps = data[1]
         if self.fps is not None and self.fps !=0:
             ave_fps = self.calc_ave_fps(self.fps)
