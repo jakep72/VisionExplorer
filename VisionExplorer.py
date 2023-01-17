@@ -40,6 +40,9 @@ class Window(QMainWindow):
 
     def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
+            self.scale = 1.0
+            self.label.resize(720,480)
+            self.scaled_img = None
             widget = self.childAt(event.position().x(),event.position().y())
             widgets = self.contentwidget.findChildren(QLabel)
 
@@ -127,12 +130,13 @@ class Window(QMainWindow):
             self.menu_device.setDisabled(1)
             self.viewMenu.setDisabled(1)
             self.fpslabel.setText(" ")
-            self.auto_button.setDisabled(1)
-            self.exp_slider.setDisabled(1)
-            self.iso_slider.setDisabled(1)
-            self.contrast_slider.setDisabled(1)
-            self.saturation_slider.setDisabled(1)
-            self.sharpness_slider.setDisabled(1)
+            if self.oak is not None:
+                self.auto_button.setDisabled(1)
+                self.exp_slider.setDisabled(1)
+                self.iso_slider.setDisabled(1)
+                self.contrast_slider.setDisabled(1)
+                self.saturation_slider.setDisabled(1)
+                self.sharpness_slider.setDisabled(1)
             
             
         elif self.master_mode == 'live':
@@ -148,19 +152,20 @@ class Window(QMainWindow):
             self.viewMenu.setDisabled(0)
             self.ave_fps = []
             self.fpslabel.setText(" ")
-            self.auto_button.setDisabled(0)
-            if self.autoexp == False:
-                self.exp_slider.setDisabled(0)
-                self.iso_slider.setDisabled(0)
-                self.contrast_slider.setDisabled(0)
-                self.saturation_slider.setDisabled(0)
-                self.sharpness_slider.setDisabled(0)
-            else:
-                self.exp_slider.setDisabled(1)
-                self.iso_slider.setDisabled(1)
-                self.contrast_slider.setDisabled(1)
-                self.saturation_slider.setDisabled(1)
-                self.sharpness_slider.setDisabled(1)
+            if self.oak is not None:
+                self.auto_button.setDisabled(0)
+                if self.autoexp == False:
+                    self.exp_slider.setDisabled(0)
+                    self.iso_slider.setDisabled(0)
+                    self.contrast_slider.setDisabled(0)
+                    self.saturation_slider.setDisabled(0)
+                    self.sharpness_slider.setDisabled(0)
+                else:
+                    self.exp_slider.setDisabled(1)
+                    self.iso_slider.setDisabled(1)
+                    self.contrast_slider.setDisabled(1)
+                    self.saturation_slider.setDisabled(1)
+                    self.sharpness_slider.setDisabled(1)
 
     def web_found(self):
         self.table.setItem(0,0,QTableWidgetItem('Webcam'))
@@ -236,6 +241,8 @@ class Window(QMainWindow):
         self.image_dir = None
         self.master_mode = 'offline'
         self.scale = 1.0
+        self.scaled_img = None
+        self.oak = None
         self.saveTimer = QTimer()
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
@@ -348,17 +355,17 @@ class Window(QMainWindow):
         exit = QAction("Exit", self, triggered=qApp.quit)
         self.menu_file.addAction(exit)
 
-        self.menu_device = self.menu.addMenu("Devices")
-        self.deviceth = Load_Device_Thread(self)
-        self.deviceth.updateDevices.connect(self.refresh_devices)
-        self.deviceth.started.connect(self.show_progress)
-        self.deviceth.loaded.connect(self.update_progress)
-
         self.viewMenu = self.menu.addMenu("View")
         self.viewMenu.addAction(QAction("Zoom &In", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
         self.viewMenu.addAction(QAction("Zoom &Out", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
         self.viewMenu.addSeparator()
         self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
+
+        self.menu_device = self.menu.addMenu("Devices")
+        self.deviceth = Load_Device_Thread(self)
+        self.deviceth.updateDevices.connect(self.refresh_devices)
+        self.deviceth.started.connect(self.show_progress)
+        self.deviceth.loaded.connect(self.update_progress)
         
         self.refresh_action = QAction("Search for Available Devices")
         self.refresh_action.triggered.connect(self.run_deviceth)
@@ -733,15 +740,18 @@ class Window(QMainWindow):
         self.scaleImage(.99)
 
     def fitToWindow(self):
+        self.scale = 1.0
         self.label.resize(720,480)
         self.scaled_img = self.img.scaled(720,480)
         self.label.setPixmap(self.scaled_img)
+        # self.scaled_img = None
 
     def scaleImage(self, factor):
         self.scale *= factor
         self.label.resize(self.scale * self.img.size())
         self.scaled_img = self.img.scaled(self.scale*self.img.size())
         self.label.setPixmap(self.scaled_img)
+        # self.scaled_img = None
         self.adjustScrollBar(self.mainscroll.horizontalScrollBar(), factor)
         self.adjustScrollBar(self.mainscroll.verticalScrollBar(), factor)
 
@@ -822,11 +832,17 @@ class Window(QMainWindow):
     def set_source(self):
         if self.table.item(0,0) and not self.scrollth.isRunning():
             self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.scaled_img = None
+            self.scale = 1.0
+            self.label.resize(720,480)
             if self.oak is not None:
                 self.make_cam_control_display()
 
             
         if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
+            self.scaled_img = None
+            self.scale = 1.0
+            self.label.resize(720,480)
             self.active_widget = None
             self.mode_button.setDisabled(1)
             self.scrollth.quit()
@@ -860,8 +876,11 @@ class Window(QMainWindow):
 
     @Slot(QImage)
     def setImage(self, data):
-        self.img =QPixmap.fromImage(data[0])
-        self.label.setPixmap(self.img)
+        self.img = QPixmap.fromImage(data[0])
+        if self.scaled_img is not None:
+            self.label.setPixmap(self.scaled_img)
+        else:
+            self.label.setPixmap(self.img)
         self.fps = data[1]
         if self.fps is not None and self.fps !=0:
             ave_fps = self.calc_ave_fps(self.fps)
@@ -931,6 +950,9 @@ class Window(QMainWindow):
 
     def playButtonClicked(self,i):
         i+=1
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.play.setDisabled(1)
         self.play.setCheckable(0)
         self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
@@ -976,6 +998,9 @@ class Window(QMainWindow):
 
     def rewindButtonClicked(self,i):
         i-=1
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.rewind.setDisabled(1)
         self.rewind.setCheckable(0)
         self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
@@ -1043,6 +1068,9 @@ class Window(QMainWindow):
         dlg.show()
 
     def recordButtonClicked(self):
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         if self.master_mode == 'live':
             if not self.saveTimer.isActive():
                 # write video
