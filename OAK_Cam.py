@@ -16,8 +16,7 @@ def make_color_pipe():
 
     # Properties
     camRgb.setBoardSocket(dai.CameraBoardSocket.RGB)
-    camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
-    # camRgb.setVideoSize(720, 480)
+    camRgb.setVideoSize(1280, 720)
     camRgb.setFps(35)
 
     # xoutVideo.input.setBlocking(False)
@@ -137,13 +136,13 @@ def make_stereo_pipe():
 #         videoIn = video.get()
 #         frame = videoIn.getCvFrame()
 #         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-#         frame = cv2.resize(frame,(720,480))
+#         # frame = cv2.resize(frame,(720,480))
         
 #         cv2.imshow('frame',frame)
 #         if cv2.waitKey(1) == ord('q'):
 #             break
 #         e = time.time()
-#         print(i)
+#         print(e-s)
 #         times.append(e-s)
 #         i+=1
 #     ave = sum(times)/len(times)

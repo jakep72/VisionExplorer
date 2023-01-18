@@ -123,6 +123,9 @@ class Window(QMainWindow):
             self.master_mode = 'live'
             self.mode_label.setText('Live')
             self.mode_label.setStyleSheet('color:green')
+            self.scaled_img = None
+            self.scale = 1.0
+            self.label.resize(720,480)
             self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
@@ -853,6 +856,9 @@ class Window(QMainWindow):
                 
         else:
             self.active_widget = None
+            self.scaled_img = None
+            self.scale = 1.0
+            self.label.resize(720,480)
             self.mode_button.setDisabled(0)
             self.scrollth.quit()
             time.sleep(1)
