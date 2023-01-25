@@ -8,11 +8,11 @@ from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
 from findDevices import OAK_USB_Devices, Webcam_Devices, Load_Device_Thread
 from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
-from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon, QCursor
+from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon, QCursor, QPalette, QBrush, QColor, QPen, QTransform
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
-                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox, QDockWidget, QToolTip)
+                               QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox, QDockWidget, QToolTip, QGraphicsScene,QGraphicsView,QGraphicsPixmapItem, QSizeGrip)
 #https://icons8.com
 #                    
 class Window(QMainWindow):
@@ -36,7 +36,12 @@ class Window(QMainWindow):
 
     def popups(self,row,column):
         item = self.table.item(row,column)
-        print(item.text())
+        if item is not None:
+            if item.text().lower() == 'edgetool':
+                self.band = RectROI(self.label)
+                self.band.move(360-75,240-32)
+                self.band.resize(150,75)
+        # print(item.text())
 
     def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
@@ -86,9 +91,12 @@ class Window(QMainWindow):
     #             self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
     #         self.rubberBand.setGeometry(QRect(self.origin, QSize()))
     #         self.rubberBand.show()
+    #     else:
+    #         return
 
     # def mouseMoveEvent(self, event):
     #     self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
+
     def enableWindow(self):
         self.window().setDisabled(0)
 
@@ -246,6 +254,7 @@ class Window(QMainWindow):
         self.scale = 1.0
         self.scaled_img = None
         self.oak = None
+        self.source = None
         self.saveTimer = QTimer()
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
@@ -286,18 +295,21 @@ class Window(QMainWindow):
         self.label = QLabel(self)
         self.label.setObjectName('MainScreen')
         self.label.resize(720,480)
-        # self.label.setFixedSize(720, 480)
         self.label.setStyleSheet("background-color:black")
         self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
         self.label.installEventFilter(self)
 
+        
+
         self.mainscroll = QScrollArea()
         # self.mainscroll.resize(725,485
+        self.mainscroll.setStyleSheet("background-color:black")
         self.mainscroll.setFixedSize(725,485)
         self.mainscroll.setWidget(self.label)
         self.mainscroll.setVisible(True)
 
         self.poslabel = QLabel(self)
+        self.poslabel.setFixedHeight(15)
         self.poslabel.setAlignment(Qt.AlignCenter)
         self.poslabel.setStyleSheet("color:white")
 
@@ -384,25 +396,14 @@ class Window(QMainWindow):
         self.toolbox_widget.setLayout(QVBoxLayout())
         self.toolbox_widget.setStyleSheet("color:white; background-color: #26242f")
 
-        self.test = QDockWidget()
-        self.test.setStyleSheet("color:white; background-color: #26242f")
-        self.test.setWindowTitle("Test")
-        self.test.setFloating(False)
-        self.test.setAllowedAreas(Qt.RightDockWidgetArea)
+
 
         self.findline = QPushButton("Edges")
+        self.findline.clicked.connect(lambda:self.place_findline())
         self.toolbox_widget.layout().addWidget(self.findline)
 
         self.addDockWidget(Qt.RightDockWidgetArea,self.toolbox)
-        # self.tabifyDockWidget(self.toolbox,self.test)
-       
 
-        # self.menu_about = self.menu.addMenu("&About")
-        # about = QAction("About Qt", self, shortcut=QKeySequence(QKeySequence.HelpContents),
-        #                 triggered=qApp.aboutQt)
-        # self.menu_about.addAction(about)
-
-        # Central widget
         widget = QWidget(self)
         widget.setLayout(self.layout)
         widget.setStyleSheet("background-color: #26242f")
@@ -792,30 +793,45 @@ class Window(QMainWindow):
         self.exposure = self.exp_slider.value()
         event = 'exposure'
         QToolTip.showText(QCursor.pos(),str(self.exposure)+" us")
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def iso_position(self):
         self.iso = self.iso_slider.value()
         event = 'iso'
         QToolTip.showText(QCursor.pos(),str(self.iso))
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def contrast_position(self):
         self.contrast = self.contrast_slider.value()
         event = 'contrast'
         QToolTip.showText(QCursor.pos(),str(self.contrast))
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def saturation_position(self):
         self.saturation = self.saturation_slider.value()
         event = 'saturation'
         QToolTip.showText(QCursor.pos(),str(self.saturation))
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def sharpness_position(self):
         self.sharpness = self.sharpness_slider.value()
         event = 'sharpness'
         QToolTip.showText(QCursor.pos(),str(self.sharpness))
+        self.scaled_img = None
+        self.scale = 1.0
+        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
         
 
@@ -833,40 +849,45 @@ class Window(QMainWindow):
     
     @Slot()
     def set_source(self):
-        if self.table.item(0,0) and not self.scrollth.isRunning():
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-            self.scaled_img = None
-            self.scale = 1.0
-            self.label.resize(720,480)
-            if self.oak is not None:
-                self.make_cam_control_display()
-
+        if self.source == None or self.source != self.table.item(0,0).text():
+            self.source = self.table.item(0,0).text()
+            if self.table.item(0,0) and not self.scrollth.isRunning():
+                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+                self.scaled_img = None
+                self.scale = 1.0
+                self.label.resize(720,480)
+                if self.oak is not None:
+                    self.make_cam_control_display()
             
-        if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
-            self.scaled_img = None
-            self.scale = 1.0
-            self.label.resize(720,480)
-            self.active_widget = None
-            self.mode_button.setDisabled(1)
-            self.scrollth.quit()
-            time.sleep(1)
-            self.create_scroll_layout()
-            self.scrollth.start()
-            self.scrollth.set_file(self.table.item(0,0))
+            elif self.table.item(0,0) is None:
+                return
+
                 
-        else:
-            self.active_widget = None
-            self.scaled_img = None
-            self.scale = 1.0
-            self.label.resize(720,480)
-            self.mode_button.setDisabled(0)
-            self.scrollth.quit()
-            time.sleep(1)
-            self.clear_scroll_layout()
-            self.create_scroll_layout()
-            self.record.setEnabled(0)
-            if self.oak is not None:
-                self.make_cam_control_display()
+            if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
+                self.scaled_img = None
+                self.scale = 1.0
+                self.label.resize(720,480)
+                self.active_widget = None
+                self.mode_button.setDisabled(1)
+                self.scrollth.quit()
+                time.sleep(1)
+                self.create_scroll_layout()
+                self.scrollth.start()
+                self.scrollth.set_file(self.table.item(0,0))
+                    
+            else:
+                self.active_widget = None
+                self.scaled_img = None
+                self.scale = 1.0
+                self.label.resize(720,480)
+                self.mode_button.setDisabled(0)
+                self.scrollth.quit()
+                time.sleep(1)
+                self.clear_scroll_layout()
+                self.create_scroll_layout()
+                self.record.setEnabled(0)
+                if self.oak is not None:
+                    self.make_cam_control_display()
     
     def calc_ave_fps(self,fps):
         self.ave_fps.append(fps)
@@ -1117,8 +1138,16 @@ class Window(QMainWindow):
                 self.image_dir = QFileDialog.getExistingDirectory()
             else:
                 self.recording = False
-                self.record.setStyleSheet("background-color:gray")     
+                self.record.setStyleSheet("background-color:gray")
 
+    def place_findline(self):
+        row = self.table.currentRow()
+        col = self.table.currentColumn()
+        if row+col != 0:
+            self.table.setItem(row,col,QTableWidgetItem("EdgeTool"))
+
+            
+        
 class VerticalLabel(QLabel):
 
     def __init__(self, *args):
@@ -1142,9 +1171,72 @@ class VerticalLabel(QLabel):
 
     def sizeHint(self):
         size = QLabel.sizeHint(self)
-        return QSize(size.height(), size.width())            
-        
+        return QSize(size.height(), size.width())
+   
+class myRubberBand(QRubberBand):
+    def __init__(self,QRubberBand_Shape,QWidget_parent=None):
+        super(myRubberBand,self).__init__(QRubberBand_Shape,QWidget_parent)
+   
+    def paintEvent(self, QPaintEvent):
+        painter = QPainter(self)
+        painter.setPen(QPen(QColor(Qt.red),2))
+        painter.setBrush(QBrush(QColor(Qt.transparent)))
+        painter.drawRect(QPaintEvent.rect())
 
+class RectROI(QWidget):
+    def __init__(self, parent=None):
+        super(RectROI, self).__init__(parent)
+
+        self.draggable = True
+        self.dragging_threshold = 5
+        self.mousePressPos = None
+        self.mouseMovePos = None
+
+
+        self.setWindowFlags(Qt.SubWindow)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        self.grip1 = QSizeGrip(self)
+        self.grip2 = QSizeGrip(self)
+        self.grip1.setStyleSheet("background-color:transparent")
+        self.grip2.setStyleSheet("background-color:transparent")
+        layout.addWidget(self.grip1, 0,Qt.AlignLeft | Qt.AlignTop)
+        layout.addWidget(self.grip2, 0,Qt.AlignRight | Qt.AlignBottom)
+        self._band = myRubberBand(QRubberBand.Rectangle, self)
+        self._band.show()
+        self.show()
+
+    def resizeEvent(self, event):
+        self._band.resize(self.size())
+
+    def mousePressEvent(self, event):
+        if self.draggable and event.button() == Qt.RightButton:
+            self.mousePressPos = event.globalPosition().toPoint()                # global
+            self.mouseMovePos = event.globalPosition().toPoint() - self.pos()    # local
+        super(RectROI, self).mousePressEvent(event)
+
+    def mouseMoveEvent(self, event):
+        if self.draggable and event.buttons() & Qt.RightButton:
+            globalPos = event.globalPosition().toPoint()
+            moved = globalPos - self.mousePressPos
+            if moved.manhattanLength() > self.dragging_threshold:
+                # Move when user drag window more than dragging_threshold
+                diff = globalPos - self.mouseMovePos
+                self.move(diff)
+                self.mouseMovePos = globalPos - self.pos()
+        super(RectROI, self).mouseMoveEvent(event)
+
+    def mouseReleaseEvent(self, event):
+        if self.mousePressPos is not None:
+            if event.button() == Qt.RightButton:
+                moved = event.globalPosition().toPoint() - self.mousePressPos
+                if moved.manhattanLength() > self.dragging_threshold:
+                    # Do not call click event or so on
+                    event.ignore()
+                self.mousePressPos = None
+        super(RectROI, self).mouseReleaseEvent(event)
+
+        
 if __name__ == "__main__":
     app = QApplication()
     w = Window()
