@@ -41,7 +41,8 @@ class Window(QMainWindow):
                 self.band = RectROI(self.label)
                 self.band.move(360-75,240-32)
                 self.band.resize(150,75)
-        # print(item.text())
+                
+
 
     def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
@@ -850,7 +851,8 @@ class Window(QMainWindow):
     @Slot()
     def set_source(self):
         if self.source == None or self.source != self.table.item(0,0).text():
-            self.source = self.table.item(0,0).text()
+            if self.table.item(0,0) is not None:
+                self.source = self.table.item(0,0).text()
             if self.table.item(0,0) and not self.scrollth.isRunning():
                 self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
                 self.scaled_img = None
@@ -1179,9 +1181,17 @@ class myRubberBand(QRubberBand):
    
     def paintEvent(self, QPaintEvent):
         painter = QPainter(self)
+        painter.setRenderHints( QPainter.Antialiasing )
         painter.setPen(QPen(QColor(Qt.red),2))
         painter.setBrush(QBrush(QColor(Qt.transparent)))
-        painter.drawRect(QPaintEvent.rect())
+        center = QPaintEvent.rect().center()
+        t = QTransform().translate(center.x(),center.y()).rotate(10).translate(-center.x(),-center.y())
+        rrect = t.mapToPolygon(QPaintEvent.rect())
+        # painter.drawRect(QPaintEvent.rect())
+        painter.drawPolygon(rrect)
+        
+        
+        
 
 class RectROI(QWidget):
     def __init__(self, parent=None):
