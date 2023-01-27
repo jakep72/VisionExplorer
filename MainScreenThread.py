@@ -62,10 +62,10 @@ class Thread(QThread):
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                     # frame = cv2.resize(frame,(640,480))
 
-                    h, w, ch = frame.shape
-                    img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                    img = img.scaled(720, 480)
-                    self.updateFrame.emit([img,None])
+                    # h, w, ch = frame.shape
+                    # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                    # img = img.scaled(720, 480)
+                    self.updateFrame.emit([frame,None])
 
                 ##### Directories of image files -- offline mode only #####         
                 elif os.path.isdir(self.image_source):
@@ -86,10 +86,10 @@ class Thread(QThread):
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         ret,frame = self.cap.read()
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        h, w, ch = frame.shape
-                        img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                        img = img.scaled(720, 480)
-                        self.updateFrame.emit([img,None])
+                        # h, w, ch = frame.shape
+                        # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                        # img = img.scaled(720, 480)
+                        self.updateFrame.emit([frame,None])
 
                 ##### Webcam -- offline and live mode #####
                 elif self.image_source == 'Webcam':
@@ -113,12 +113,12 @@ class Thread(QThread):
                                 self.cap.release()
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            h, w, ch = frame.shape
-                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                            img = img.scaled(720, 480)
+                            # h, w, ch = frame.shape
+                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                            # img = img.scaled(720, 480)
                             e = time.time()
                             delta = 1000*(e-s)
-                            self.updateFrame.emit([img,delta])
+                            self.updateFrame.emit([frame,delta])
 
                             if self.master_mode == 'live':
                                 pass
@@ -139,10 +139,10 @@ class Thread(QThread):
                             self.cap.release()
             
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                        h, w, ch = frame.shape
-                        img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                        img = img.scaled(720, 480)
-                        self.updateFrame.emit([img,None])
+                        # h, w, ch = frame.shape
+                        # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                        # img = img.scaled(720, 480)
+                        self.updateFrame.emit([frame,None])
                         while self.status:
                             if self.master_mode == 'offline':
                                 if self.image_source != source:
@@ -193,12 +193,12 @@ class Thread(QThread):
                                 videoIn = video.get()
                                 frame = videoIn.getCvFrame()
                                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                h, w, ch = frame.shape
-                                img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                img = img.scaled(720, 480)
+                                # h, w, ch = frame.shape
+                                # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([img,delta])
+                                self.updateFrame.emit([frame,delta])
                                 
                                 if self.master_mode == 'live':
                                     pass
@@ -213,10 +213,10 @@ class Thread(QThread):
                             videoIn = video.get()
                             frame = videoIn.getCvFrame()
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                            h, w, ch = frame.shape
-                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                            img = img.scaled(720, 480)
-                            self.updateFrame.emit([img,None])
+                            # h, w, ch = frame.shape
+                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                            # img = img.scaled(720, 480)
+                            self.updateFrame.emit([frame,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
@@ -231,10 +231,10 @@ class Thread(QThread):
                                             videoIn = video.get()
                                             frame = videoIn.getCvFrame()
                                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            h, w, ch = frame.shape
-                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w, ch = frame.shape
+                                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                             
                                         elif self.event == 'contrast':
                                             ctrl.setContrast(self.contrast)
@@ -244,10 +244,10 @@ class Thread(QThread):
                                             videoIn = video.get()
                                             frame = videoIn.getCvFrame()
                                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            h, w, ch = frame.shape
-                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w, ch = frame.shape
+                                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                         elif self.event == 'saturation':
                                             ctrl.setSaturation(self.saturation)
                                             controlQ.send(ctrl)
@@ -256,10 +256,10 @@ class Thread(QThread):
                                             videoIn = video.get()
                                             frame = videoIn.getCvFrame()
                                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            h, w, ch = frame.shape
-                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w, ch = frame.shape
+                                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                         elif self.event == 'sharpness':
                                             ctrl.setSharpness(self.sharpness)
                                             controlQ.send(ctrl)
@@ -268,10 +268,10 @@ class Thread(QThread):
                                             videoIn = video.get()
                                             frame = videoIn.getCvFrame()
                                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            h, w, ch = frame.shape
-                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w, ch = frame.shape
+                                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                         elif self.event == 'AutoOn':
                                             ctrl.setAutoExposureEnable()
                                             ctrl.setContrast(0)
@@ -283,10 +283,10 @@ class Thread(QThread):
                                             videoIn = video.get()
                                             frame = videoIn.getCvFrame()
                                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                                            h, w, ch = frame.shape
-                                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w, ch = frame.shape
+                                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                             break
                                         else:
                                             pass
@@ -335,12 +335,12 @@ class Thread(QThread):
                                 inRight = qRight.get()
                                 frame = inRight.getCvFrame()
 
-                                h, w  = frame.shape
-                                img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                                img = img.scaled(720, 480)
+                                # h, w  = frame.shape
+                                # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([img,delta])
+                                self.updateFrame.emit([frame,delta])
 
                                 if self.master_mode == 'live':
                                     pass
@@ -355,10 +355,10 @@ class Thread(QThread):
                             inRight = qRight.get()
                             frame = inRight.getCvFrame()
 
-                            h, w  = frame.shape
-                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                            img = img.scaled(720, 480)
-                            self.updateFrame.emit([img,None])
+                            # h, w  = frame.shape
+                            # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                            # img = img.scaled(720, 480)
+                            self.updateFrame.emit([frame,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
@@ -373,10 +373,10 @@ class Thread(QThread):
                                             inRight = qRight.get()
                                             frame = inRight.getCvFrame()
 
-                                            h, w  = frame.shape
-                                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w  = frame.shape
+                                            # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                         elif self.event == 'AutoOn':
                                             ctrl.setAutoExposureEnable()
                                             controlQ.send(ctrl)
@@ -385,10 +385,10 @@ class Thread(QThread):
                                             inRight = qRight.get()
                                             frame = inRight.getCvFrame()
 
-                                            h, w  = frame.shape
-                                            img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
-                                            img = img.scaled(720, 480)
-                                            self.updateFrame.emit([img,None])
+                                            # h, w  = frame.shape
+                                            # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                                            # img = img.scaled(720, 480)
+                                            self.updateFrame.emit([frame,None])
                                             break
                                         else:
                                             pass
@@ -415,12 +415,12 @@ class Thread(QThread):
                                 frame = inq.getFrame()
                                 frame = (frame *(255 / depth.initialConfig.getMaxDisparity())).astype(np.uint8)
                                 frame = cv2.applyColorMap(frame,cv2.COLORMAP_JET)
-                                h, w, ch = frame.shape
-                                img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                                img = img.scaled(720, 480)
+                                # h, w, ch = frame.shape
+                                # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([img,delta])
+                                self.updateFrame.emit([frame,delta])
 
                                 if self.master_mode == 'live':
                                     pass
@@ -435,10 +435,10 @@ class Thread(QThread):
                             frame = inq.getFrame()
                             frame = (frame *(255 / depth.initialConfig.getMaxDisparity())).astype(np.uint8)
                             frame = cv2.applyColorMap(frame,cv2.COLORMAP_JET)
-                            h, w, ch = frame.shape
-                            img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
-                            img = img.scaled(720, 480)
-                            self.updateFrame.emit([img,None])
+                            # h, w, ch = frame.shape
+                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                            # img = img.scaled(720, 480)
+                            self.updateFrame.emit([frame,None])
                             while self.status:
                                 if self.master_mode == 'offline':
                                     if self.image_source != source:
