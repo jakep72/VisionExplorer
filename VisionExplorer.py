@@ -3,241 +3,23 @@ import os
 import time
 from functools import partial
 import datetime
+import pyqtgraph as pg
+import pyqtgraph.exporters
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
 from findDevices import OAK_USB_Devices, Webcam_Devices, Load_Device_Thread
-from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer
+from PySide6.QtCore import Qt, QThread, Signal, Slot,QAbstractTableModel, QPoint, QRect, QSize, QTimer,QPointF
 from PySide6.QtGui import QAction, QImage, QKeySequence, QPixmap, QScreen, QPainter, QFontMetrics, QIcon, QCursor, QPalette, QBrush, QColor, QPen, QTransform
 from PySide6.QtWidgets import (QApplication, QComboBox, QGroupBox,
                                QHBoxLayout, QLabel, QMainWindow, QPushButton,
                                QSizePolicy, QVBoxLayout, QWidget,QTableView,QTableWidget,
                                QScrollArea,QFrame, QTableWidgetItem,QProgressDialog,QRubberBand,QAbstractItemView, QStyle, QSlider, QToolBar, QFileDialog,QMessageBox, QDockWidget, QToolTip, QGraphicsScene,QGraphicsView,QGraphicsPixmapItem, QSizeGrip)
 #https://icons8.com
-#                    
+  
+pg.setConfigOptions(imageAxisOrder='row-major')                  
 class Window(QMainWindow):
-    def eventFilter(self, object, event):
-        if str(event.type()) == 'Type.HoverMove': 
-            if self.active_widget is not None:
-                self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-                self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(self.curpos))
-                return True
-
-            elif self.active_widget is None:
-                self.curpos = QPoint(event.position().x(),event.position().y()).toTuple()
-                self.poslabel.setText("Cursor Position (x,y): "+str(self.curpos))
-                return True
-
-        elif str(event.type()) == 'Type.HoverLeave':
-            self.poslabel.setText("")
-            return True
-        else:
-            return False
-
-    def popups(self,row,column):
-        item = self.table.item(row,column)
-        if item is not None:
-            if item.text().lower() == 'edgetool':
-                self.band = RectROI(self.label)
-                self.band.move(360-75,240-32)
-                self.band.resize(150,75)
-                
-
-
-    def mouseDoubleClickEvent(self, event):
-        if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
-            self.scale = 1.0
-            self.label.resize(720,480)
-            self.scaled_img = None
-            widget = self.childAt(event.position().x(),event.position().y())
-            widgets = self.contentwidget.findChildren(QLabel)
-
-            if self.pause.isEnabled():
-                return
-            
-            elif widget is not None and widget.objectName() and not self.pause.isEnabled():
-                self.playback_mode = 'idle'
-                self.active_widget = widget
-                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-                widget.setStyleSheet("border: 5px solid green;")
-                for w in widgets:
-                    if w.objectName():
-                        if w.objectName() != self.active_widget.objectName():
-                            w.setStyleSheet("border:0px solid black")
-                if int(self.active_widget.objectName()) == self.total_frames-1:
-                    self.play.setDisabled(1)
-                    self.play.setCheckable(0)
-                    self.rewind.setDisabled(0)
-                    self.rewind.setCheckable(1)
-                if int(self.active_widget.objectName()) == 0:
-                    self.play.setDisabled(0)
-                    self.play.setCheckable(1)
-                    self.rewind.setDisabled(1)
-                    self.rewind.setCheckable(0)
-
-                if int(self.active_widget.objectName()) != self.total_frames-1 and int(self.active_widget.objectName()) != 0:
-                    self.play.setDisabled(0)
-                    self.play.setCheckable(1)
-                    self.rewind.setDisabled(0)
-                    self.rewind.setCheckable(1)
-
-
-    # def mousePressEvent(self, event):
-    #     if self.rubberBand:
-    #         self.rubberBand.hide()
-    #     widget = self.childAt(event.position().x(),event.position().y())
-    #     if widget.objectName() == 'MainScreen':
-    #         self.origin = QPoint(event.position().x(),event.position().y())
-    #         if not self.rubberBand:
-    #             self.rubberBand = QRubberBand(QRubberBand.Rectangle, self)
-    #         self.rubberBand.setGeometry(QRect(self.origin, QSize()))
-    #         self.rubberBand.show()
-    #     else:
-    #         return
-
-    # def mouseMoveEvent(self, event):
-    #     self.rubberBand.setGeometry(QRect(self.origin, QPoint(event.position().x(),event.position().y())))
-
-    def enableWindow(self):
-        self.window().setDisabled(0)
-
-    def enableAutoExp(self):
-        if self.auto_button.isChecked() == True:
-            self.autoexp = False
-            self.exp_slider.setDisabled(0)
-            self.iso_slider.setDisabled(0)
-            self.contrast_slider.setDisabled(0)
-            self.saturation_slider.setDisabled(0)
-            self.sharpness_slider.setDisabled(0)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-            self.auto_button.setStyleSheet('color:white; background-color:red')
-            self.auto_button.setText('Off')
-            
-            
-        elif self.auto_button.isChecked() == False:
-            self.autoexp = True
-            self.exp_slider.setDisabled(1)
-            self.iso_slider.setDisabled(1)
-            self.contrast_slider.setDisabled(1)
-            self.saturation_slider.setDisabled(1)
-            self.sharpness_slider.setDisabled(1)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,'AutoOn')
-            self.auto_button.setStyleSheet('color:white; background-color:green')
-            self.auto_button.setText('On')
-
-
-    def enableLiveMode(self):
-        if self.master_mode == 'offline':
-            self.record.setEnabled(1)
-            self.master_mode = 'live'
-            self.mode_label.setText('Live')
-            self.mode_label.setStyleSheet('color:green')
-            self.scaled_img = None
-            self.scale = 1.0
-            self.label.resize(720,480)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-            self.window().setDisabled(1)
-            QTimer.singleShot(5000,self.enableWindow)
-            self.table.setDisabled(1)
-            self.menu_device.setDisabled(1)
-            self.viewMenu.setDisabled(1)
-            self.fpslabel.setText(" ")
-            if self.oak is not None:
-                self.auto_button.setDisabled(1)
-                self.exp_slider.setDisabled(1)
-                self.iso_slider.setDisabled(1)
-                self.contrast_slider.setDisabled(1)
-                self.saturation_slider.setDisabled(1)
-                self.sharpness_slider.setDisabled(1)
-            
-            
-        elif self.master_mode == 'live':
-            self.record.setEnabled(0)
-            self.master_mode = 'offline'
-            self.mode_label.setText('Offline')
-            self.mode_label.setStyleSheet('color:red')
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-            self.window().setDisabled(1)
-            QTimer.singleShot(5000,self.enableWindow)
-            self.table.setDisabled(0)
-            self.menu_device.setDisabled(0)
-            self.viewMenu.setDisabled(0)
-            self.ave_fps = []
-            self.fpslabel.setText(" ")
-            if self.oak is not None:
-                self.auto_button.setDisabled(0)
-                if self.autoexp == False:
-                    self.exp_slider.setDisabled(0)
-                    self.iso_slider.setDisabled(0)
-                    self.contrast_slider.setDisabled(0)
-                    self.saturation_slider.setDisabled(0)
-                    self.sharpness_slider.setDisabled(0)
-                else:
-                    self.exp_slider.setDisabled(1)
-                    self.iso_slider.setDisabled(1)
-                    self.contrast_slider.setDisabled(1)
-                    self.saturation_slider.setDisabled(1)
-                    self.sharpness_slider.setDisabled(1)
-
-    def web_found(self):
-        self.table.setItem(0,0,QTableWidgetItem('Webcam'))
-
-
-    def oak_found(self,checked):
-        action = self.sender()
-        cam = action.text()
-        
-        if cam == 'Color Camera':
-           self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Color"))
-        elif cam == 'Mono Left Camera':
-            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoLeft"))
-        elif cam == 'Mono Right Camera':
-            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoRight"))
-        elif cam == 'Stereo':
-            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Stereo"))
-
-    def show_progress(self):
-        self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
-        self.dev_dlg.setWindowTitle(" ")
-        self.dev_dlg.show()
-    
-    def update_progress(self,value):
-        self.dev_dlg.hide()
-
-    def run_deviceth(self):
-        self.deviceth.start()
-        
-    def refresh_devices(self,data):
-        self.menu_device.clear()
-        self.webcam = data[0]
-        self.oak = data[1]
-        
-        if self.webcam:
-            self.webcam_action = QAction("Webcam")
-            self.webcam_action.triggered.connect(self.web_found)
-            self.menu_device.addAction(self.webcam_action)
-            self.menu_device.addSeparator()
-        
-        if self.oak is not None:
-            for device in self.oak:
-                mxId, cams = list(device.items())[0]
-                self.oak_sub = self.menu_device.addMenu("OAK Camera: "+str(mxId))
-                self.oak_sub.setObjectName(mxId)
-                self.menu_device.addSeparator()
-                for cam in cams:
-                    self.cam_action = QAction(cam,self)
-                    self.cam_action.triggered.connect(self.oak_found)
-                    self.oak_sub.addAction(self.cam_action)
-                
-        
-        self.refresh_action = QAction("Refresh Available Devices")
-        self.refresh_action.triggered.connect(self.run_deviceth)
-        self.menu_device.addAction(self.refresh_action)
-        self.deviceth.quit()
-        
-
     def __init__(self):
-        # super().__init__()
         super(Window, self).__init__()
         self.setWindowTitle("Vision Explorer")
         self.setAcceptDrops(True)
@@ -252,16 +34,15 @@ class Window(QMainWindow):
         self.recording = False
         self.image_dir = None
         self.master_mode = 'offline'
-        self.scale = 1.0
-        self.scaled_img = None
+        self.img_height = None
+        self.img_width = None
+        self.img_channels = None
         self.oak = None
         self.source = None
         self.saveTimer = QTimer()
         self.img_formats = ('.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
-
-        
         self.autoexp = True
         self.focus = 150
         self.exposure = 20000
@@ -291,23 +72,20 @@ class Window(QMainWindow):
         self.toolbar.addWidget(self.mode_label)
         self.mode_button.setDisabled(1)
 
+        self.w = pg.GraphicsLayoutWidget(show=True, border=False)
+        self.w.setObjectName("mainscreen")
+        self.w.setAttribute(Qt.WidgetAttribute.WA_Hover)
+        self.w.installEventFilter(self)
 
-        # Create a label for the display camera
-        self.label = QLabel(self)
-        self.label.setObjectName('MainScreen')
-        self.label.resize(720,480)
-        self.label.setStyleSheet("background-color:black")
-        self.label.setAttribute(Qt.WidgetAttribute.WA_Hover)
-        self.label.installEventFilter(self)
-
+        self.v = self.w.addViewBox()
         
+        self.v.invertY(True) 
+        self.v.setAspectLocked(True)
 
-        self.mainscroll = QScrollArea()
-        # self.mainscroll.resize(725,485
-        self.mainscroll.setStyleSheet("background-color:black")
-        self.mainscroll.setFixedSize(725,485)
-        self.mainscroll.setWidget(self.label)
-        self.mainscroll.setVisible(True)
+        self.label = pg.ImageItem()
+
+        self.v.addItem(self.label)
+
 
         self.poslabel = QLabel(self)
         self.poslabel.setFixedHeight(15)
@@ -327,7 +105,7 @@ class Window(QMainWindow):
         # Main layout
         toplayout = QHBoxLayout()
         leftlayout = QVBoxLayout()
-        leftlayout.addWidget(self.mainscroll)
+        leftlayout.addWidget(self.w)
         leftlayout.addWidget(self.poslabel)
         leftlayout.setContentsMargins(75,0,0,0)
         leftlayout.setSpacing(5)
@@ -342,7 +120,6 @@ class Window(QMainWindow):
         rightlayout.addWidget(self.table)
         rightlayout.addWidget(self.fpslabel)
         rightlayout.setStretch(100,100)
-        # rightlayout.setContentsMargins(75,0,0,0)
         rightlayout.setSpacing(5)
         rightlayout.setAlignment(Qt.AlignVCenter | Qt.AlignHCenter)
 
@@ -371,11 +148,11 @@ class Window(QMainWindow):
         exit = QAction("Exit", self, triggered=qApp.quit)
         self.menu_file.addAction(exit)
 
-        self.viewMenu = self.menu.addMenu("View")
-        self.viewMenu.addAction(QAction("Zoom &In", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
-        self.viewMenu.addAction(QAction("Zoom &Out", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
-        self.viewMenu.addSeparator()
-        self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
+        # self.viewMenu = self.menu.addMenu("View")
+        # self.viewMenu.addAction(QAction("Zoom &In", self, shortcut="Ctrl++", enabled=True, triggered=self.zoomIn))
+        # self.viewMenu.addAction(QAction("Zoom &Out", self, shortcut="Ctrl+-", enabled=True, triggered=self.zoomOut))
+        # self.viewMenu.addSeparator()
+        # self.viewMenu.addAction(QAction("&Fit to Window", self, enabled=True, shortcut="Ctrl+F",triggered=self.fitToWindow))
 
         self.menu_device = self.menu.addMenu("Devices")
         self.deviceth = Load_Device_Thread(self)
@@ -570,6 +347,214 @@ class Window(QMainWindow):
         self.contentwidget.setLayout(self.scroll_layout)
         self.pb_widget.setLayout(self.playback_layout)
 
+    def eventFilter(self, object, event):
+        if str(event.type()) == 'Type.HoverMove': 
+            if self.active_widget is not None:
+                
+                self.curpos = QPointF(event.position().x(),event.position().y())
+                imgpos = self.label.mapFromScene(self.curpos).toTuple()
+                if imgpos[0] > 0 and imgpos[1] > 0 and imgpos[0] < self.img_width and imgpos[1] < self.img_height:
+                    imgpos = (int(imgpos[0]),int(imgpos[1]))
+                    self.poslabel.setText("Frame #"+self.active_widget.objectName()+"  "+"Cursor Position (x,y): "+str(imgpos))
+                    return True
+                else:
+                    self.poslabel.setText("")
+                    return True
+
+            elif self.active_widget is None and self.img_height is not None:
+                self.curpos = QPointF(event.position().x(),event.position().y())
+                imgpos = self.label.mapFromScene(self.curpos).toTuple()
+                if imgpos[0] > 0 and imgpos[1] > 0 and imgpos[0] < self.img_width and imgpos[1] < self.img_height:
+                    imgpos = (int(imgpos[0]),int(imgpos[1]))
+                    self.poslabel.setText("Cursor Position (x,y): "+str(imgpos))
+                    return True
+                else:
+                    self.poslabel.setText("")
+                    return True
+            else:
+                self.poslabel.setText("")
+                return True
+
+        elif str(event.type()) == 'Type.HoverLeave':
+            self.poslabel.setText("")
+            return True
+        else:
+            return False
+
+    def popups(self,row,column):
+        item = self.table.item(row,column)
+        if item is not None:
+            if item.text().lower() == 'edgetool':
+                self.roi = pg.RectROI([self.img_width/2-100, self.img_height/2-50], [200, 100], pen=(0,9))
+                self.roi.addRotateHandle([1,0], [0.5, 0.5])
+                self.v.addItem(self.roi)
+
+    def mouseDoubleClickEvent(self, event):
+        if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
+            widget = self.childAt(event.position().x(),event.position().y())
+            widgets = self.contentwidget.findChildren(QLabel)
+
+            if self.pause.isEnabled():
+                return
+            
+            elif widget is not None and widget.objectName() and not self.pause.isEnabled():
+                self.playback_mode = 'idle'
+                self.active_widget = widget
+                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+                widget.setStyleSheet("border: 5px solid green;")
+                for w in widgets:
+                    if w.objectName():
+                        if w.objectName() != self.active_widget.objectName():
+                            w.setStyleSheet("border:0px solid black")
+                if int(self.active_widget.objectName()) == self.total_frames-1:
+                    self.play.setDisabled(1)
+                    self.play.setCheckable(0)
+                    self.rewind.setDisabled(0)
+                    self.rewind.setCheckable(1)
+                if int(self.active_widget.objectName()) == 0:
+                    self.play.setDisabled(0)
+                    self.play.setCheckable(1)
+                    self.rewind.setDisabled(1)
+                    self.rewind.setCheckable(0)
+
+                if int(self.active_widget.objectName()) != self.total_frames-1 and int(self.active_widget.objectName()) != 0:
+                    self.play.setDisabled(0)
+                    self.play.setCheckable(1)
+                    self.rewind.setDisabled(0)
+                    self.rewind.setCheckable(1)
+
+    def enableWindow(self):
+        self.window().setDisabled(0)
+
+    def enableAutoExp(self):
+        if self.auto_button.isChecked() == True:
+            self.autoexp = False
+            self.exp_slider.setDisabled(0)
+            self.iso_slider.setDisabled(0)
+            self.contrast_slider.setDisabled(0)
+            self.saturation_slider.setDisabled(0)
+            self.sharpness_slider.setDisabled(0)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.auto_button.setStyleSheet('color:white; background-color:red')
+            self.auto_button.setText('Off')
+            
+            
+        elif self.auto_button.isChecked() == False:
+            self.autoexp = True
+            self.exp_slider.setDisabled(1)
+            self.iso_slider.setDisabled(1)
+            self.contrast_slider.setDisabled(1)
+            self.saturation_slider.setDisabled(1)
+            self.sharpness_slider.setDisabled(1)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,'AutoOn')
+            self.auto_button.setStyleSheet('color:white; background-color:green')
+            self.auto_button.setText('On')
+
+
+    def enableLiveMode(self):
+        if self.master_mode == 'offline':
+            self.record.setEnabled(1)
+            self.master_mode = 'live'
+            self.mode_label.setText('Live')
+            self.mode_label.setStyleSheet('color:green')
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.window().setDisabled(1)
+            QTimer.singleShot(5000,self.enableWindow)
+            self.table.setDisabled(1)
+            self.menu_device.setDisabled(1)
+            self.fpslabel.setText(" ")
+            if self.oak is not None:
+                self.auto_button.setDisabled(1)
+                self.exp_slider.setDisabled(1)
+                self.iso_slider.setDisabled(1)
+                self.contrast_slider.setDisabled(1)
+                self.saturation_slider.setDisabled(1)
+                self.sharpness_slider.setDisabled(1)
+            
+            
+        elif self.master_mode == 'live':
+            self.record.setEnabled(0)
+            self.master_mode = 'offline'
+            self.mode_label.setText('Offline')
+            self.mode_label.setStyleSheet('color:red')
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
+            self.window().setDisabled(1)
+            QTimer.singleShot(5000,self.enableWindow)
+            self.table.setDisabled(0)
+            self.menu_device.setDisabled(0)
+            self.ave_fps = []
+            self.fpslabel.setText(" ")
+            if self.oak is not None:
+                self.auto_button.setDisabled(0)
+                if self.autoexp == False:
+                    self.exp_slider.setDisabled(0)
+                    self.iso_slider.setDisabled(0)
+                    self.contrast_slider.setDisabled(0)
+                    self.saturation_slider.setDisabled(0)
+                    self.sharpness_slider.setDisabled(0)
+                else:
+                    self.exp_slider.setDisabled(1)
+                    self.iso_slider.setDisabled(1)
+                    self.contrast_slider.setDisabled(1)
+                    self.saturation_slider.setDisabled(1)
+                    self.sharpness_slider.setDisabled(1)
+
+    def web_found(self):
+        self.table.setItem(0,0,QTableWidgetItem('Webcam'))
+
+
+    def oak_found(self,checked):
+        action = self.sender()
+        cam = action.text()
+        
+        if cam == 'Color Camera':
+           self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Color"))
+        elif cam == 'Mono Left Camera':
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoLeft"))
+        elif cam == 'Mono Right Camera':
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"MonoRight"))
+        elif cam == 'Stereo':
+            self.table.setItem(0,0,QTableWidgetItem(self.oak_sub.objectName()+"_"+"Stereo"))
+
+    def show_progress(self):
+        self.dev_dlg = QProgressDialog("Searching for Devices..", None, 0, 0, self)
+        self.dev_dlg.setWindowTitle(" ")
+        self.dev_dlg.show()
+    
+    def update_progress(self,value):
+        self.dev_dlg.hide()
+
+    def run_deviceth(self):
+        self.deviceth.start()
+        
+    def refresh_devices(self,data):
+        self.menu_device.clear()
+        self.webcam = data[0]
+        self.oak = data[1]
+        
+        if self.webcam:
+            self.webcam_action = QAction("Webcam")
+            self.webcam_action.triggered.connect(self.web_found)
+            self.menu_device.addAction(self.webcam_action)
+            self.menu_device.addSeparator()
+        
+        if self.oak is not None:
+            for device in self.oak:
+                mxId, cams = list(device.items())[0]
+                self.oak_sub = self.menu_device.addMenu("OAK Camera: "+str(mxId))
+                self.oak_sub.setObjectName(mxId)
+                self.menu_device.addSeparator()
+                for cam in cams:
+                    self.cam_action = QAction(cam,self)
+                    self.cam_action.triggered.connect(self.oak_found)
+                    self.oak_sub.addAction(self.cam_action)
+                
+        
+        self.refresh_action = QAction("Refresh Available Devices")
+        self.refresh_action.triggered.connect(self.run_deviceth)
+        self.menu_device.addAction(self.refresh_action)
+        self.deviceth.quit()
+
     def make_cam_control_display(self):
         foreground = "green"
         color = "gray"
@@ -737,37 +722,7 @@ class Window(QMainWindow):
 
 
         self.bottomlayout.addWidget(self.camcontrolwidget)
-
-    def zoomIn(self):
-        self.scaleImage(1.01)
-
-    def zoomOut(self):
-        self.scaleImage(.99)
-
-    def fitToWindow(self):
-        self.scale = 1.0
-        self.label.resize(720,480)
-        self.scaled_img = self.img.scaled(720,480)
-        self.label.setPixmap(self.scaled_img)
-        # self.scaled_img = None
-
-    def scaleImage(self, factor):
-        self.scale *= factor
-        self.label.resize(self.scale * self.img.size())
-        self.scaled_img = self.img.scaled(self.scale*self.img.size())
-        self.label.setPixmap(self.scaled_img)
-        # self.scaled_img = None
-        self.adjustScrollBar(self.mainscroll.horizontalScrollBar(), factor)
-        self.adjustScrollBar(self.mainscroll.verticalScrollBar(), factor)
-
-        # self.zoomIn.setEnabled(self.scaleFactor < 3.0)
-        # self.zoomOut.setEnabled(self.scaleFactor > 0.333)
-
-    def adjustScrollBar(self, scrollBar, factor):
-        scrollBar.setValue(int(factor * scrollBar.value()
-                               + ((factor - 1) * scrollBar.pageStep() / 2)))
     
-
     def dragEnterEvent(self, e):
         if e.mimeData().hasUrls() and not self.scrollth.isRunning() and self.master_mode != 'live':
             e.accept()
@@ -794,45 +749,30 @@ class Window(QMainWindow):
         self.exposure = self.exp_slider.value()
         event = 'exposure'
         QToolTip.showText(QCursor.pos(),str(self.exposure)+" us")
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def iso_position(self):
         self.iso = self.iso_slider.value()
         event = 'iso'
         QToolTip.showText(QCursor.pos(),str(self.iso))
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def contrast_position(self):
         self.contrast = self.contrast_slider.value()
         event = 'contrast'
         QToolTip.showText(QCursor.pos(),str(self.contrast))
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def saturation_position(self):
         self.saturation = self.saturation_slider.value()
         event = 'saturation'
         QToolTip.showText(QCursor.pos(),str(self.saturation))
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
 
     def sharpness_position(self):
         self.sharpness = self.sharpness_slider.value()
         event = 'sharpness'
         QToolTip.showText(QCursor.pos(),str(self.sharpness))
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event)
         
 
@@ -855,9 +795,6 @@ class Window(QMainWindow):
                 self.source = self.table.item(0,0).text()
             if self.table.item(0,0) and not self.scrollth.isRunning():
                 self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
-                self.scaled_img = None
-                self.scale = 1.0
-                self.label.resize(720,480)
                 if self.oak is not None:
                     self.make_cam_control_display()
             
@@ -866,9 +803,6 @@ class Window(QMainWindow):
 
                 
             if self.table.item(0,0).text().lower().endswith(self.vid_formats) or os.path.isdir(self.table.item(0,0).text()):
-                self.scaled_img = None
-                self.scale = 1.0
-                self.label.resize(720,480)
                 self.active_widget = None
                 self.mode_button.setDisabled(1)
                 self.scrollth.quit()
@@ -879,9 +813,6 @@ class Window(QMainWindow):
                     
             else:
                 self.active_widget = None
-                self.scaled_img = None
-                self.scale = 1.0
-                self.label.resize(720,480)
                 self.mode_button.setDisabled(0)
                 self.scrollth.quit()
                 time.sleep(1)
@@ -905,11 +836,8 @@ class Window(QMainWindow):
 
     @Slot(QImage)
     def setImage(self, data):
-        self.img = QPixmap.fromImage(data[0])
-        if self.scaled_img is not None:
-            self.label.setPixmap(self.scaled_img)
-        else:
-            self.label.setPixmap(self.img)
+        self.img_height, self.img_width, self.img_channels = data[0].shape
+        self.label.setImage(data[0])
         self.fps = data[1]
         if self.fps is not None and self.fps !=0:
             ave_fps = self.calc_ave_fps(self.fps)
@@ -979,9 +907,6 @@ class Window(QMainWindow):
 
     def playButtonClicked(self,i):
         i+=1
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.play.setDisabled(1)
         self.play.setCheckable(0)
         self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
@@ -1027,9 +952,6 @@ class Window(QMainWindow):
 
     def rewindButtonClicked(self,i):
         i-=1
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         self.rewind.setDisabled(1)
         self.rewind.setCheckable(0)
         self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None)
@@ -1087,8 +1009,10 @@ class Window(QMainWindow):
                     w.setStyleSheet("border:0px solid black")
         self.playback_mode = 'paused'
 
-    def saveImages(self,dir,i):
-        self.label.pixmap().save(os.path.join(dir,'frame'+str(i)+'.jpg'))
+    def saveImages(self,dir,i):      
+        QApplication.processEvents()
+        self.exporter = pg.exporters.ImageExporter(self.label)
+        self.exporter.export(os.path.join(dir,'frame'+str(i)+'.jpg'))
 
     def pop_message(self):
         dlg = QMessageBox()
@@ -1097,9 +1021,6 @@ class Window(QMainWindow):
         dlg.show()
 
     def recordButtonClicked(self):
-        self.scaled_img = None
-        self.scale = 1.0
-        self.label.resize(720,480)
         if self.master_mode == 'live':
             if not self.saveTimer.isActive():
                 # write video
@@ -1175,78 +1096,6 @@ class VerticalLabel(QLabel):
         size = QLabel.sizeHint(self)
         return QSize(size.height(), size.width())
    
-class myRubberBand(QRubberBand):
-    def __init__(self,QRubberBand_Shape,QWidget_parent=None):
-        super(myRubberBand,self).__init__(QRubberBand_Shape,QWidget_parent)
-   
-    def paintEvent(self, QPaintEvent):
-        painter = QPainter(self)
-        painter.setRenderHints( QPainter.Antialiasing )
-        painter.setPen(QPen(QColor(Qt.red),2))
-        painter.setBrush(QBrush(QColor(Qt.transparent)))
-        center = QPaintEvent.rect().center()
-        t = QTransform().translate(center.x(),center.y()).rotate(10).translate(-center.x(),-center.y())
-        rrect = t.mapToPolygon(QPaintEvent.rect())
-        # painter.drawRect(QPaintEvent.rect())
-        painter.drawPolygon(rrect)
-        
-        
-        
-
-class RectROI(QWidget):
-    def __init__(self, parent=None):
-        super(RectROI, self).__init__(parent)
-
-        self.draggable = True
-        self.dragging_threshold = 5
-        self.mousePressPos = None
-        self.mouseMovePos = None
-
-
-        self.setWindowFlags(Qt.SubWindow)
-        layout = QHBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        self.grip1 = QSizeGrip(self)
-        self.grip2 = QSizeGrip(self)
-        self.grip1.setStyleSheet("background-color:transparent")
-        self.grip2.setStyleSheet("background-color:transparent")
-        layout.addWidget(self.grip1, 0,Qt.AlignLeft | Qt.AlignTop)
-        layout.addWidget(self.grip2, 0,Qt.AlignRight | Qt.AlignBottom)
-        self._band = myRubberBand(QRubberBand.Rectangle, self)
-        self._band.show()
-        self.show()
-
-    def resizeEvent(self, event):
-        self._band.resize(self.size())
-
-    def mousePressEvent(self, event):
-        if self.draggable and event.button() == Qt.RightButton:
-            self.mousePressPos = event.globalPosition().toPoint()                # global
-            self.mouseMovePos = event.globalPosition().toPoint() - self.pos()    # local
-        super(RectROI, self).mousePressEvent(event)
-
-    def mouseMoveEvent(self, event):
-        if self.draggable and event.buttons() & Qt.RightButton:
-            globalPos = event.globalPosition().toPoint()
-            moved = globalPos - self.mousePressPos
-            if moved.manhattanLength() > self.dragging_threshold:
-                # Move when user drag window more than dragging_threshold
-                diff = globalPos - self.mouseMovePos
-                self.move(diff)
-                self.mouseMovePos = globalPos - self.pos()
-        super(RectROI, self).mouseMoveEvent(event)
-
-    def mouseReleaseEvent(self, event):
-        if self.mousePressPos is not None:
-            if event.button() == Qt.RightButton:
-                moved = event.globalPosition().toPoint() - self.mousePressPos
-                if moved.manhattanLength() > self.dragging_threshold:
-                    # Do not call click event or so on
-                    event.ignore()
-                self.mousePressPos = None
-        super(RectROI, self).mouseReleaseEvent(event)
-
-        
 if __name__ == "__main__":
     app = QApplication()
     w = Window()
