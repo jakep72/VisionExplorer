@@ -9,7 +9,7 @@ An application for exploring machine vision
 * ~~Live and offline modes~~ (1/3)
 * ~~Support for OAK devices~~ (1/4)
 * ~~Find available devices~~ (1/5)
-* Zoom, Pan, etc on Main Screen
-* Define ROI's
+* ~~Zoom, Pan, etc on Main Screen~~(1/26)
+* ~~Define ROI's~~(1/26)
 * Add Machine Vision functions -- find line, contours, etc
 * Make Menubar functional
