@@ -2,6 +2,7 @@ import os
 import time
 import glob
 import cv2
+from cv_functions import findlines
 import depthai as dai
 import numpy as np
 from OAK_Cam import make_color_pipe, make_mono_left_pipe, make_mono_right_pipe, make_stereo_pipe
@@ -27,7 +28,7 @@ class Thread(QThread):
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.glob_formats = ['*.jpg','*.bmp','*.jpe','*.jpeg','*.tif','*.tiff']
         
-    def set_file(self, fname,frame_no,master_mode,auto,focus,exposure,iso,brightness,contrast,saturation,sharpness,event):
+    def set_file(self, fname,frame_no,master_mode,auto,focus,exposure,iso,brightness,contrast,saturation,sharpness,event,roi):
         self.image_source =  fname.text()
         self.frame_no = int(frame_no)
         self.master_mode = master_mode
@@ -40,6 +41,24 @@ class Thread(QThread):
         self.saturation = saturation
         self.sharpness = sharpness
         self.event = event
+        self.roi = roi
+        self.rect_start = None
+        self.rect_end = None
+
+        if self.roi is not None:
+            point_start = self.roi.getState()['pos']
+            self.rect_size = self.roi.getState()['size']
+            self.rect_angle = self.roi.getState()['angle']
+            x_start = int(point_start[0])
+            y_start = int(point_start[1])
+            width = int(self.rect_size[0])
+            height = int(self.rect_size[1])
+            x_end = x_start+width
+            y_end = y_start+height
+            self.rect_start = (x_start,y_start)
+            self.rect_end = (x_end,y_end)
+
+
         
     def run(self):
         while True:
@@ -60,6 +79,10 @@ class Thread(QThread):
                         continue
         
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                    # if self.rect_start is not None:
+                    #     x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
+                    #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
                     # frame = cv2.resize(frame,(640,480))
 
                     # h, w, ch = frame.shape
@@ -113,6 +136,7 @@ class Thread(QThread):
                                 self.cap.release()
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
                             # h, w, ch = frame.shape
                             # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                             # img = img.scaled(720, 480)
@@ -193,6 +217,10 @@ class Thread(QThread):
                                 videoIn = video.get()
                                 frame = videoIn.getCvFrame()
                                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+                                if self.rect_start is not None:
+                                    x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
+                                    cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
                                 # h, w, ch = frame.shape
                                 # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                                 # img = img.scaled(720, 480)
@@ -334,13 +362,16 @@ class Thread(QThread):
 
                                 inRight = qRight.get()
                                 frame = inRight.getCvFrame()
-
-                                # h, w  = frame.shape
+                                
+                                if self.rect_start is not None:
+                                    x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
+                                    cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                                
                                 # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                                 # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([frame,delta])
+                                self.updateFrame.emit([frame,delta,(x1,y1,x2,y2)])
 
                                 if self.master_mode == 'live':
                                     pass
