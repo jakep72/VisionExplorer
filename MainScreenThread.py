@@ -137,12 +137,20 @@ class Thread(QThread):
                 
                             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-                            # h, w, ch = frame.shape
-                            # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                            if self.rect_start is not None:
+                                points = findlines(frame,self.rect_start,self.rect_end)
+                                x1 = points[0]
+                                y1 = points[1]
+                                x2 = points[2]
+                                y2 = points[3]
+                                # if x1 is not None:
+                                #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                            
+                            # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                             # img = img.scaled(720, 480)
                             e = time.time()
                             delta = 1000*(e-s)
-                            self.updateFrame.emit([frame,delta])
+                            self.updateFrame.emit([frame,delta,points])
 
                             if self.master_mode == 'live':
                                 pass
@@ -219,14 +227,19 @@ class Thread(QThread):
                                 frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
                                 if self.rect_start is not None:
-                                    x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
-                                    cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
-                                # h, w, ch = frame.shape
-                                # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
+                                    points = findlines(frame,self.rect_start,self.rect_end)
+                                    x1 = points[0]
+                                    y1 = points[1]
+                                    x2 = points[2]
+                                    y2 = points[3]
+                                    # if x1 is not None:
+                                    #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                                
+                                # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                                 # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([frame,delta])
+                                self.updateFrame.emit([frame,delta,points])
                                 
                                 if self.master_mode == 'live':
                                     pass
@@ -364,14 +377,19 @@ class Thread(QThread):
                                 frame = inRight.getCvFrame()
                                 
                                 if self.rect_start is not None:
-                                    x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
-                                    cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                                    points = findlines(frame,self.rect_start,self.rect_end)
+                                    x1 = points[0]
+                                    y1 = points[1]
+                                    x2 = points[2]
+                                    y2 = points[3]
+                                    # if x1 is not None:
+                                    #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
                                 
                                 # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
                                 # img = img.scaled(720, 480)
                                 e = time.time()
                                 delta = 1000*(e-s)
-                                self.updateFrame.emit([frame,delta,(x1,y1,x2,y2)])
+                                self.updateFrame.emit([frame,delta,points])
 
                                 if self.master_mode == 'live':
                                     pass

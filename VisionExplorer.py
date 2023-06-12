@@ -6,6 +6,7 @@ from functools import partial
 import datetime
 import pyqtgraph as pg
 import pyqtgraph.exporters
+from EdgeWindow import EdgeWindow
 from MainScreenThread import Thread
 from PlaybackScreenThread import ScrollThread
 from LiveRecordThread import LiveRecord
@@ -89,6 +90,10 @@ class Window(QMainWindow):
         self.label = pg.ImageItem()
 
         self.v.addItem(self.label)
+        self.pen = QPen(QBrush('red'),2)
+        self.line = pg.PlotCurveItem()
+        self.line.setPen(self.pen)
+        self.v.addItem(self.line)
 
 
         self.poslabel = QLabel(self)
@@ -386,6 +391,8 @@ class Window(QMainWindow):
             return False
 
     def popups(self,row,column):
+        self.ew = EdgeWindow()
+        self.ew.show()
         item = self.table.item(row,column)
         if item is not None:
             if item.text().lower() == 'edgetool':
@@ -862,17 +869,29 @@ class Window(QMainWindow):
             else:
                 self.fpslabel.setText(" ")
             if self.edgerow is not None:
-                
+
+
                 point_start = self.roi.getState()['pos']
                 x0 = int(point_start[0])
                 y0= int(point_start[1])
                 
-                x1 = data[2][0]+x0
-                y1 = data[2][1]+y0
-                x2 = data[2][2]+x0
-                y2 = data[2][3]+y0
+                if data[2][0] is not None:
+                    x1 = data[2][0]+x0
+                    y1 = data[2][1]+y0
+                    x2 = data[2][2]+x0
+                    y2 = data[2][3]+y0
 
-                angle = np.degrees(np.arctan((y2-y1)/(x2-x1)))
+                    angle = np.degrees(np.arctan((y2-y1)/(x2-x1)))
+
+                    self.line.setData(x=[x1,x2],y=[y1,y2])
+
+                
+                else:
+                    x1 = 'None'
+                    x2 = 'None'
+                    y1 = 'None'
+                    y2 = 'None'
+                    angle = 'None'
 
                 self.table.setItem(self.edgerow+1,self.edgecol+2,QTableWidgetItem(str(x1)))
                 self.table.setItem(self.edgerow+1,self.edgecol+3,QTableWidgetItem(str(y1)))
@@ -880,10 +899,8 @@ class Window(QMainWindow):
                 self.table.setItem(self.edgerow+1,self.edgecol+5,QTableWidgetItem(str(y2)))
                 self.table.setItem(self.edgerow+1,self.edgecol+6,QTableWidgetItem(str(angle)))
                 
-                # pen = QPen(QBrush('red'),2)
-                # line = pg.PlotCurveItem(x=[x1,x2],y=[y1,y2])
-                # line.setPen(pen)
-                # self.v.addItem(line)
+                
+
                 # self.v.removeItem(line)
         # if self.roi is not None:
         #     print(self.roi.getState())
