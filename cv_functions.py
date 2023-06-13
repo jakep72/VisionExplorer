@@ -20,7 +20,7 @@ def findlines(frame,rect_start,rect_end):
     # cv2.imshow('test2',roi)
     # cv2.imshow('test3',thresh)
     # cv2.waitKey(0)
-    print(lines[0][0])
+    # print(lines[0][0])
     if lines is not None:
         x1 = lines[0][0][0]
         y1 = lines[0][0][1]

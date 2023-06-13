@@ -70,7 +70,7 @@ class Thread(QThread):
                 if self.image_source.lower().endswith(self.mixed_formats):
                     source = self.image_source
                     self.cap = cv2.VideoCapture(source)
-                    
+                    s = time.time()
                     if self.image_source != None and self.image_source != source:
                         self.status = False
                     self.cap.set(cv2.CAP_PROP_POS_FRAMES, self.frame_no)
@@ -80,6 +80,20 @@ class Thread(QThread):
         
                     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+                    if self.rect_start is not None:
+                        points = findlines(frame,self.rect_start,self.rect_end)
+                        x1 = points[0]
+                        y1 = points[1]
+                        x2 = points[2]
+                        y2 = points[3]
+                        # if x1 is not None:
+                        #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                    
+                    # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                    # img = img.scaled(720, 480)
+                        e = time.time()
+                        delta = 1000*(e-s)
+                        self.updateFrame.emit([frame,delta,points])
                     # if self.rect_start is not None:
                     #     x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
                     #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
@@ -88,7 +102,8 @@ class Thread(QThread):
                     # h, w, ch = frame.shape
                     # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                     # img = img.scaled(720, 480)
-                    self.updateFrame.emit([frame,None])
+                    else:
+                        self.updateFrame.emit([frame,None])
 
                 ##### Directories of image files -- offline mode only #####         
                 elif os.path.isdir(self.image_source):
@@ -105,14 +120,35 @@ class Thread(QThread):
                     file = frames[self.frame_no]
                     path = os.path.join(source,file)
                     self.cap = cv2.VideoCapture(path)
+                    s = time.time()
                     if file.lower().endswith(self.img_formats):
                         self.cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
                         ret,frame = self.cap.read()
                         frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        if self.rect_start is not None:
+                            points = findlines(frame,self.rect_start,self.rect_end)
+                            x1 = points[0]
+                            y1 = points[1]
+                            x2 = points[2]
+                            y2 = points[3]
+                            # if x1 is not None:
+                            #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                        
+                        # img = QImage(frame.data, w, h, QImage.Format_Grayscale8)
+                        # img = img.scaled(720, 480)
+                            e = time.time()
+                            delta = 1000*(e-s)
+                            self.updateFrame.emit([frame,delta,points])
+                        # if self.rect_start is not None:
+                        #     x1,y1,x2,y2 = findlines(frame,self.rect_start,self.rect_end)
+                        #     cv2.line(frame,(x1+self.rect_start[0],y1+self.rect_start[1]),(x2+self.rect_start[0],y2+self.rect_start[1]),(255,0,0),3)
+                        # frame = cv2.resize(frame,(640,480))
+
                         # h, w, ch = frame.shape
                         # img = QImage(frame.data, w, h, ch * w, QImage.Format_RGB888)
                         # img = img.scaled(720, 480)
-                        self.updateFrame.emit([frame,None])
+                        else:
+                            self.updateFrame.emit([frame,None])
 
                 ##### Webcam -- offline and live mode #####
                 elif self.image_source == 'Webcam':
