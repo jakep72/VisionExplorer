@@ -27,6 +27,6 @@ def findlines(frame,rect_start,rect_end):
         x2 = lines[0][0][2]
         y2 = lines[0][0][3]
 
-        return(int(x1),int(y1),int(x2),int(y2))
+        return(x1,y1,x2,y2)
     else:
         return(None,None,None,None)

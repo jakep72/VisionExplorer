@@ -872,8 +872,8 @@ class Window(QMainWindow):
 
 
                 point_start = self.roi.getState()['pos']
-                x0 = int(point_start[0])
-                y0= int(point_start[1])
+                x0 = point_start[0]
+                y0= point_start[1]
                 
                 if data[2][0] is not None:
                     x1 = data[2][0]+x0
@@ -883,7 +883,7 @@ class Window(QMainWindow):
 
                     angle = np.degrees(np.arctan((y2-y1)/(x2-x1)))
 
-                    self.line.setData(x=[x1,x2],y=[y1,y2])
+                    self.line.setData(x=[int(x1),int(x2)],y=[int(y1),int(y2)])
 
                 
                 else:
