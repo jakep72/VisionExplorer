@@ -892,6 +892,7 @@ class Window(QMainWindow):
                     y1 = 'None'
                     y2 = 'None'
                     angle = 'None'
+                    self.line.setData(x=[0,0],y=[0,0])
 
                 self.table.setItem(self.edgerow+1,self.edgecol+2,QTableWidgetItem(str(x1)))
                 self.table.setItem(self.edgerow+1,self.edgecol+3,QTableWidgetItem(str(y1)))
