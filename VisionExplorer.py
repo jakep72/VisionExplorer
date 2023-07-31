@@ -189,6 +189,10 @@ class Window(QMainWindow):
         self.findline.clicked.connect(lambda:self.place_findline())
         self.toolbox_widget.layout().addWidget(self.findline)
 
+        self.classifier = QPushButton("Classify")
+        self.classifier.clicked.connect(lambda: self.place_classifier())
+        self.toolbox_widget.layout().addWidget(self.classifier)
+
         self.addDockWidget(Qt.RightDockWidgetArea,self.toolbox)
 
         widget = QWidget(self)
@@ -391,8 +395,8 @@ class Window(QMainWindow):
             return False
 
     def popups(self,row,column):
-        self.ew = EdgeWindow()
-        self.ew.show()
+        # self.ew = EdgeWindow()
+        # self.ew.show()
         item = self.table.item(row,column)
         if item is not None:
             if item.text().lower() == 'edgetool':
@@ -407,6 +411,17 @@ class Window(QMainWindow):
                 self.table.setItem(row,column+4,QTableWidgetItem('X2'))
                 self.table.setItem(row,column+5,QTableWidgetItem('Y2'))
                 self.table.setItem(row,column+6,QTableWidgetItem('Angle'))
+
+            elif item.text().lower() == 'classifiertool':
+                self.classrow = row
+                self.classcol = column
+                self.table.setItem(row,column+2,QTableWidgetItem('Defect Name'))
+                self.table.setItem(row,column+3,QTableWidgetItem('Batch Size'))
+                self.table.setItem(row,column+4,QTableWidgetItem('Epochs'))
+                self.table.setItem(row,column+5,QTableWidgetItem('Save Freq'))
+                
+
+
                 
 
     def mouseDoubleClickEvent(self, event):
@@ -1128,6 +1143,12 @@ class Window(QMainWindow):
         col = self.table.currentColumn()
         if row+col != 0:
             self.table.setItem(row,col,QTableWidgetItem("EdgeTool"))
+
+    def place_classifier(self):
+        row = self.table.currentRow()
+        col = self.table.currentColumn()
+        if row+col != 0:
+            self.table.setItem(row,col,QTableWidgetItem("ClassifierTool"))
 
             
         
