@@ -1,10 +1,13 @@
 import sys
 import os
+from pathlib import Path
 import time
 import numpy as np
 from functools import partial
 import datetime
+import pandas as pd
 import pyqtgraph as pg
+from CLIPScripts.clip_train import train_clip
 import pyqtgraph.exporters
 from EdgeWindow import EdgeWindow
 from MainScreenThread import Thread
@@ -56,7 +59,11 @@ class Window(QMainWindow):
         self.sharpness = 0 #0-4
         self.edgerow = None
         self.edgecol = None
-
+        self.classnames = []
+        self.class_image_paths = []
+        self.classdialog = QFileDialog(self)
+        self.classdialog.setFileMode(QFileDialog.Directory)
+        self.classdialog.setWindowTitle('Choose folder...')
 
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
@@ -412,17 +419,34 @@ class Window(QMainWindow):
                 self.table.setItem(row,column+5,QTableWidgetItem('Y2'))
                 self.table.setItem(row,column+6,QTableWidgetItem('Angle'))
 
-            elif item.text().lower() == 'classifiertool':
+            elif item.text().lower() == '':
                 self.classrow = row
-                self.classcol = column
-                self.table.setItem(row,column+2,QTableWidgetItem('Defect Name'))
-                self.table.setItem(row,column+3,QTableWidgetItem('Batch Size'))
-                self.table.setItem(row,column+4,QTableWidgetItem('Epochs'))
-                self.table.setItem(row,column+5,QTableWidgetItem('Save Freq'))
-                
+                fileName = QFileDialog.getExistingDirectory(self, "Choose Folder",
+                                       "/home")
+                self.table.setItem(row,column,QTableWidgetItem(fileName))
 
+            elif item.text().lower() == 'train classifier':
+                #make dataset func
+                #train func
+                cap_list = []
+                path_list = []
+                caption_opts = []
+                for i in range(self.classrow-row):
+                    caption = "an image of a "+self.table.item(row+i+1,column+2).text()+" defect"
+                    caption_opts.append(caption)
+                    base_im_path = Path(self.table.item(row+i+1,column+3).text())
+                    for file in os.listdir(base_im_path):
+                        im_path = base_im_path / file
+                        cap_list.append(caption)
+                        path_list.append(im_path)
 
-                
+                cap_ops = pd.DataFrame({'captions': caption_opts})
+                df = pd.DataFrame({'captions': cap_list, 'image_path': path_list})
+
+                cap_ops.to_csv('captions.csv')
+                df.to_csv('data.csv')
+                train_clip('data.csv',epochs=10)
+            
 
     def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):
@@ -1148,7 +1172,9 @@ class Window(QMainWindow):
         row = self.table.currentRow()
         col = self.table.currentColumn()
         if row+col != 0:
-            self.table.setItem(row,col,QTableWidgetItem("ClassifierTool"))
+            self.table.setItem(row,col,QTableWidgetItem("Train Classifier"))
+            self.table.setItem(row,col+2,QTableWidgetItem('Defect Name'))
+            self.table.setItem(row,col+3,QTableWidgetItem('Image Folder'))
 
             
         

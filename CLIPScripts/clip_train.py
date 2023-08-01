@@ -4,7 +4,6 @@ from torch.utils.data import Dataset, DataLoader, BatchSampler
 import clip
 from PIL import Image
 import pandas as pd
-from tqdm import tqdm
 
 
 class image_title_dataset(Dataset):
@@ -14,9 +13,9 @@ class image_title_dataset(Dataset):
         self.preprocess = preprocess
 
     def __len__(self):
-        return(self.title)
+        return len(self.title)
     
-    def __getitem(self, idx):
+    def __getitem__(self, idx):
         image = self.preprocess(Image.open(self.image_path[idx]))
         title = self.title[idx]
         return image, title
@@ -36,7 +35,7 @@ def load_data(csv_file, batch_size, preprocess):
     return train_dataloader
 
 
-def train_clip(base_model, csv_file, batch_size, epochs, save_freq):
+def train_clip(csv_file, base_model="RN101", batch_size=16, epochs=5, save_freq=1):
 
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load(base_model, device=device, jit=False)
@@ -52,11 +51,13 @@ def train_clip(base_model, csv_file, batch_size, epochs, save_freq):
     optimizer = optim.Adam(model.parameters(), lr=1e-6, betas=(0.9, 0.98), eps=1e-6, weight_decay=0.0001)
 
     for epoch in range(epochs):
-        for images, texts in enumerate(train_dataloader):
+        for batch in train_dataloader:
             optimizer.zero_grad()
 
-            images.to_device()
-            texts.to_device()
+            images, texts = batch
+
+            images = images.to(device)
+            texts = texts.to(device)
 
             image_logits, text_logits = model(images, texts)
 
@@ -66,9 +67,12 @@ def train_clip(base_model, csv_file, batch_size, epochs, save_freq):
 
             total_loss.backward()
 
-            convert_models_to_fp32(model)
-            optimizer.step()
-            clip.model.convert_weights(model)
+            if device == "cpu":
+                optimizer.step()
+            else : 
+                convert_models_to_fp32(model)
+                optimizer.step()
+                clip.model.convert_weights(model)
 
         print(total_loss)
 
@@ -79,5 +83,3 @@ def train_clip(base_model, csv_file, batch_size, epochs, save_freq):
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': total_loss,
             }, "model_checkpoints/model_{}.pt".format(epoch))
-
-
