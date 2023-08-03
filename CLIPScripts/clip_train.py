@@ -18,8 +18,7 @@ class image_title_dataset(Dataset):
     def __getitem__(self, idx):
         image = self.preprocess(Image.open(self.image_path[idx]))
         title = self.title[idx]
-        return image, title
-    
+        return image, title  
 
 def convert_models_to_fp32(model):
     for p in model.parameters():
@@ -30,6 +29,10 @@ def load_data(csv_file, batch_size, preprocess):
     df = pd.read_csv(csv_file)
     list_image_path = df["image_path"].to_list()
     list_text = df["captions"].to_list()
+
+    tokens = list(set(list_text))
+    torch.save(tokens,"model_checkpoints/tokens.pt")
+
     dataset = image_title_dataset(list_image_path, list_text, preprocess)
     train_dataloader = DataLoader(dataset, batch_size = batch_size)
     return train_dataloader

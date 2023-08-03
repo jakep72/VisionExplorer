@@ -8,6 +8,7 @@ import datetime
 import pandas as pd
 import pyqtgraph as pg
 from CLIPScripts.clip_train import train_clip
+from CLIPScripts.clip_inference import clip_inference
 import pyqtgraph.exporters
 from EdgeWindow import EdgeWindow
 from MainScreenThread import Thread
@@ -196,9 +197,13 @@ class Window(QMainWindow):
         self.findline.clicked.connect(lambda:self.place_findline())
         self.toolbox_widget.layout().addWidget(self.findline)
 
-        self.classifier = QPushButton("Classify")
+        self.classifier = QPushButton("Train Classifier")
         self.classifier.clicked.connect(lambda: self.place_classifier())
         self.toolbox_widget.layout().addWidget(self.classifier)
+
+        self.infclassifier = QPushButton("Run Classifier")
+        self.infclassifier.clicked.connect(lambda: self.place_infclassifier())
+        self.toolbox_widget.layout().addWidget(self.infclassifier)
 
         self.addDockWidget(Qt.RightDockWidgetArea,self.toolbox)
 
@@ -445,7 +450,20 @@ class Window(QMainWindow):
 
                 cap_ops.to_csv('captions.csv')
                 df.to_csv('data.csv')
-                train_clip('data.csv',epochs=10)
+                train_clip('data.csv', epochs=10)
+
+            elif item.text().lower() == 'run classifier':
+                #make dataset func
+                #train func
+                image = Path(self.table.item(0,0).text())
+                model_folder = Path(self.table.item(row+1,column+2).text())
+                prediction = clip_inference(image, model_folder)
+                self.table.setItem(row+1,column+3,QTableWidgetItem(prediction))
+                sal_path = str(model_folder / Path('..') / Path("saliency.jpg"))
+                self.table.setItem(0,0,QTableWidgetItem(sal_path))
+                # self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+
+
             
 
     def mouseDoubleClickEvent(self, event):
@@ -1175,6 +1193,14 @@ class Window(QMainWindow):
             self.table.setItem(row,col,QTableWidgetItem("Train Classifier"))
             self.table.setItem(row,col+2,QTableWidgetItem('Defect Name'))
             self.table.setItem(row,col+3,QTableWidgetItem('Image Folder'))
+
+    def place_infclassifier(self):
+        row = self.table.currentRow()
+        col = self.table.currentColumn()
+        if row+col != 0:
+            self.table.setItem(row,col,QTableWidgetItem("Run Classifier"))
+            self.table.setItem(row,col+2,QTableWidgetItem('Model Path'))
+            self.table.setItem(row,col+3,QTableWidgetItem('Defect Prediction'))
 
             
         

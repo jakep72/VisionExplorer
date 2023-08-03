@@ -2,15 +2,23 @@ import cv2
 import numpy as np
 
 def findlines(frame,rect_start,rect_end,method='b2w'):
+    if rect_start[0] < 0 or rect_start[1] < 0 or rect_end[0] < 0 or rect_end[1] < 0:
+        print("Region of interest out of frame!")
+        return(None,None,None,None)
+    
     if len(frame.shape) == 3:
         gray = cv2.cvtColor(frame,cv2.COLOR_BGR2GRAY)
     else:
         gray = frame
 
+    
     bw_offset = 5   
     roi = gray[rect_start[1]:rect_end[1],rect_start[0]:rect_end[0]]
     ret,thresh = cv2.threshold(roi,0,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
+    if thresh is None:
+        return(None,None,None,None)
     lsd = cv2.createLineSegmentDetector(0)
+    
 
     minlen = 5
 

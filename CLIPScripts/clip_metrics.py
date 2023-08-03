@@ -30,7 +30,7 @@ def clip_metrics(csv_data_path, caption_choices, checkpoint = None, return_frame
     correct_count = 0
 
     for i in range(len(list_image_path)):
-        image = preprocess(Image.open(list_image_path[i])).unsqueeze().to(device)
+        image = preprocess(Image.open(list_image_path[i])).unsqueeze(0).to(device)
 
         with torch.no_grad():
             image_logits, text_logits = model(image, text)
