@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def findlines(frame,rect_start,rect_end,method='b2w'):
+def findlines(frame,rect_start,rect_end,method='both'):
     if rect_start[0] < 0 or rect_start[1] < 0 or rect_end[0] < 0 or rect_end[1] < 0:
         print("Region of interest out of frame!")
         return(None,None,None,None)
@@ -37,7 +37,9 @@ def findlines(frame,rect_start,rect_end,method='b2w'):
         line_center_px_below = thresh[int(cpy+bw_offset),int(cpx)]
 
         if x1 != x2  and line_len > minlen:
-            if line_center_px_above < line_center_px_below and method == "b2w":
+            if method == 'both':
+                return(x1,y1,x2,y2)
+            elif line_center_px_above < line_center_px_below and method == "b2w":
                 return(x1,y1,x2,y2)
             elif line_center_px_above > line_center_px_below and method == "w2b":
                 return(x1,y1,x2,y2)

@@ -169,7 +169,7 @@ def get_cam_weights(input_tensor_,
     scores = []
     for index, tensor in enumerate(input_tensors): 
         score = []
-        for i in tqdm(range(0, tensor.size(0), BATCH_SIZE)):
+        for i in range(0, tensor.size(0), BATCH_SIZE):
           torch.cuda.empty_cache()
           batch = tensor[i: i + BATCH_SIZE, :]
           if torch.isnan(batch).any():

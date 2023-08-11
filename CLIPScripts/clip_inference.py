@@ -5,7 +5,7 @@ from pathlib import Path
 from CLIPScripts.clip_saliency_map import saliency_map
 
 
-def clip_inference(image_path, model_folder):
+def clip_inference(image_path, model_folder, map=True):
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load("RN101", device=device)
 
@@ -32,5 +32,6 @@ def clip_inference(image_path, model_folder):
     base_text = base.split(" ")
     pred = list(set(guess_text).difference(base_text))[0]
 
-    # saliency_map(image_path, guess, model, preprocess)
+    if map == True:
+        saliency_map(image_path, guess, model, preprocess)
     return pred

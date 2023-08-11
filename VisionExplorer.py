@@ -118,7 +118,9 @@ class Window(QMainWindow):
 
         self.scrollth = ScrollThread(self)
         self.scrollth.updatescroll.connect(self.setScrollImage)
-        
+
+
+
         # Main layout
         toplayout = QHBoxLayout()
         leftlayout = QVBoxLayout()
@@ -132,6 +134,7 @@ class Window(QMainWindow):
         self.table = QTableWidget(100, 100, self)
         self.table.cellChanged.connect(self.set_source)
         self.table.cellDoubleClicked.connect(self.popups)
+        self.table.keyPressEvent = lambda event: self.delete_cell() if event.key() == Qt.Key_Delete else None
         self.table.setStyleSheet("background-color:white")
        
         rightlayout.addWidget(self.table)
@@ -213,6 +216,36 @@ class Window(QMainWindow):
         self.setCentralWidget(widget)
 
         self.start()
+
+    def delete_cell(self):
+        current_row = self.table.currentRow()
+        current_column = self.table.currentColumn()
+        if self.table.item(current_row, current_column) is not None:
+            cell_value = self.table.item(current_row, current_column).text().lower()
+        else:
+            cell_value = None
+    
+        if cell_value == 'edgetool':
+            self.table.setItem(self.edgerow+1,self.edgecol+2,QTableWidgetItem(str('')))
+            self.table.setItem(self.edgerow+1,self.edgecol+3,QTableWidgetItem(str('')))
+            self.table.setItem(self.edgerow+1,self.edgecol+4,QTableWidgetItem(str('')))
+            self.table.setItem(self.edgerow+1,self.edgecol+5,QTableWidgetItem(str('')))
+            self.table.setItem(self.edgerow+1,self.edgecol+6,QTableWidgetItem(str('')))
+
+            self.table.removeRow(self.edgerow)
+            self.edgerow = None
+            self.edgecol = None
+            
+            self.line.setData(x=[0,0],y=[0,0])
+            self.v.removeItem(self.roi)
+            self.roi = None
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+
+        elif cell_value == 'run classifier':
+            self.table.setItem(current_row+1,current_column+2,QTableWidgetItem(str('')))
+            self.table.setItem(current_row+1,current_column+3,QTableWidgetItem(str('')))
+            self.table.removeRow(current_row) 
+                 
 
     def create_scroll_layout(self):
         foreground = "green"
@@ -431,8 +464,6 @@ class Window(QMainWindow):
                 self.table.setItem(row,column,QTableWidgetItem(fileName))
 
             elif item.text().lower() == 'train classifier':
-                #make dataset func
-                #train func
                 cap_list = []
                 path_list = []
                 caption_opts = []
@@ -453,18 +484,14 @@ class Window(QMainWindow):
                 train_clip('data.csv', epochs=10)
 
             elif item.text().lower() == 'run classifier':
-                #make dataset func
-                #train func
+
                 image = Path(self.table.item(0,0).text())
                 model_folder = Path(self.table.item(row+1,column+2).text())
-                prediction = clip_inference(image, model_folder)
+                prediction = clip_inference(image, model_folder, map=False)
                 self.table.setItem(row+1,column+3,QTableWidgetItem(prediction))
                 sal_path = str(model_folder / Path('..') / Path("saliency.jpg"))
                 self.table.setItem(0,0,QTableWidgetItem(sal_path))
-                # self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
-
-
-            
+                
 
     def mouseDoubleClickEvent(self, event):
         if self.table.item(0,0).text().lower().endswith(self.mixed_formats) or os.path.isdir(self.table.item(0,0).text()):

@@ -77,8 +77,6 @@ def train_clip(csv_file, base_model="RN101", batch_size=16, epochs=5, save_freq=
                 optimizer.step()
                 clip.model.convert_weights(model)
 
-        print(total_loss)
-
         if epochs % save_freq == 0:
             torch.save({
                 'epoch': epoch,
