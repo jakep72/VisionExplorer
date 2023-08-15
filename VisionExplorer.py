@@ -60,11 +60,21 @@ class Window(QMainWindow):
         self.sharpness = 0 #0-4
         self.edgerow = None
         self.edgecol = None
+        self.classrow = None
         self.classnames = []
         self.class_image_paths = []
         self.classdialog = QFileDialog(self)
         self.classdialog.setFileMode(QFileDialog.Directory)
         self.classdialog.setWindowTitle('Choose folder...')
+
+        self.cam_settings = {'autoexp':self.autoexp,
+                             'focus':self.focus,
+                             'exposure':self.exposure,
+                             'iso':self.iso,
+                             'brightness':self.brightness,
+                             'contrast':self.contrast,
+                             'saturation':self.saturation,
+                             'sharpness':self.sharpness}
 
         screenGeometry = QScreen.availableGeometry(QApplication.primaryScreen())
         self.setGeometry(screenGeometry)
@@ -226,25 +236,33 @@ class Window(QMainWindow):
             cell_value = None
     
         if cell_value == 'edgetool':
-            self.table.setItem(self.edgerow+1,self.edgecol+2,QTableWidgetItem(str('')))
-            self.table.setItem(self.edgerow+1,self.edgecol+3,QTableWidgetItem(str('')))
-            self.table.setItem(self.edgerow+1,self.edgecol+4,QTableWidgetItem(str('')))
-            self.table.setItem(self.edgerow+1,self.edgecol+5,QTableWidgetItem(str('')))
-            self.table.setItem(self.edgerow+1,self.edgecol+6,QTableWidgetItem(str('')))
+            if self.edgerow is not None:
+                self.table.setItem(self.edgerow+1,self.edgecol+2,QTableWidgetItem(str('')))
+                self.table.setItem(self.edgerow+1,self.edgecol+3,QTableWidgetItem(str('')))
+                self.table.setItem(self.edgerow+1,self.edgecol+4,QTableWidgetItem(str('')))
+                self.table.setItem(self.edgerow+1,self.edgecol+5,QTableWidgetItem(str('')))
+                self.table.setItem(self.edgerow+1,self.edgecol+6,QTableWidgetItem(str('')))
 
-            self.table.removeRow(self.edgerow)
-            self.edgerow = None
-            self.edgecol = None
-            
-            self.line.setData(x=[0,0],y=[0,0])
-            self.v.removeItem(self.roi)
-            self.roi = None
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+                self.edgerow = None
+                self.edgecol = None
+                
+                self.line.setData(x=[0,0],y=[0,0])
+                self.v.removeItem(self.roi)
+                self.roi = None
+                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
+            self.table.removeRow(current_row)
 
         elif cell_value == 'run classifier':
             self.table.setItem(current_row+1,current_column+2,QTableWidgetItem(str('')))
             self.table.setItem(current_row+1,current_column+3,QTableWidgetItem(str('')))
-            self.table.removeRow(current_row) 
+            self.table.removeRow(current_row)
+
+        elif cell_value == 'train classifier':
+            if self.classrow is not None:
+                for i in range(self.classrow-current_row):
+                    self.table.setItem(current_row+(i+1),current_column+2,QTableWidgetItem(str('')))
+                    self.table.setItem(current_row+(i+1),current_column+3,QTableWidgetItem(str('')))
+            self.table.removeRow(current_row)
                  
 
     def create_scroll_layout(self):
@@ -450,7 +468,7 @@ class Window(QMainWindow):
                 self.roi = pg.RectROI([self.img_width/2-100, self.img_height/2-50], [200, 100], pen=(0,9))
                 self.roi.addRotateHandle([1,0], [0.5, 0.5])
                 self.v.addItem(self.roi)
-                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
                 self.table.setItem(row,column+2,QTableWidgetItem('X1'))
                 self.table.setItem(row,column+3,QTableWidgetItem('Y1'))
                 self.table.setItem(row,column+4,QTableWidgetItem('X2'))
@@ -487,7 +505,7 @@ class Window(QMainWindow):
 
                 image = Path(self.table.item(0,0).text())
                 model_folder = Path(self.table.item(row+1,column+2).text())
-                prediction = clip_inference(image, model_folder, map=False)
+                prediction = clip_inference(image, model_folder, map=True)
                 self.table.setItem(row+1,column+3,QTableWidgetItem(prediction))
                 sal_path = str(model_folder / Path('..') / Path("saliency.jpg"))
                 self.table.setItem(0,0,QTableWidgetItem(sal_path))
@@ -504,7 +522,7 @@ class Window(QMainWindow):
             elif widget is not None and widget.objectName() and not self.pause.isEnabled():
                 self.playback_mode = 'idle'
                 self.active_widget = widget
-                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+                self.th.set_file(self.table.item(0,0),widget.objectName(),self.master_mode,self.cam_settings,None,self.roi)
                 widget.setStyleSheet("border: 5px solid green;")
                 for w in widgets:
                     if w.objectName():
@@ -533,24 +551,26 @@ class Window(QMainWindow):
     def enableAutoExp(self):
         if self.auto_button.isChecked() == True:
             self.autoexp = False
+            self.cam_settings['autoexp'] = self.autoexp
             self.exp_slider.setDisabled(0)
             self.iso_slider.setDisabled(0)
             self.contrast_slider.setDisabled(0)
             self.saturation_slider.setDisabled(0)
             self.sharpness_slider.setDisabled(0)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
             self.auto_button.setStyleSheet('color:white; background-color:red')
             self.auto_button.setText('Off')
             
             
         elif self.auto_button.isChecked() == False:
             self.autoexp = True
+            self.cam_settings['autoexp'] = self.autoexp
             self.exp_slider.setDisabled(1)
             self.iso_slider.setDisabled(1)
             self.contrast_slider.setDisabled(1)
             self.saturation_slider.setDisabled(1)
             self.sharpness_slider.setDisabled(1)
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,'AutoOn',self.roi)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,'AutoOn',self.roi)
             self.auto_button.setStyleSheet('color:white; background-color:green')
             self.auto_button.setText('On')
 
@@ -561,7 +581,7 @@ class Window(QMainWindow):
             self.master_mode = 'live'
             self.mode_label.setText('Live')
             self.mode_label.setStyleSheet('color:green')
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(1)
@@ -581,7 +601,7 @@ class Window(QMainWindow):
             self.master_mode = 'offline'
             self.mode_label.setText('Offline')
             self.mode_label.setStyleSheet('color:red')
-            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+            self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
             self.window().setDisabled(1)
             QTimer.singleShot(5000,self.enableWindow)
             self.table.setDisabled(0)
@@ -851,33 +871,38 @@ class Window(QMainWindow):
 
     def exp_position(self):
         self.exposure = self.exp_slider.value()
+        self.cam_settings['exposure'] = self.exposure
         event = 'exposure'
         QToolTip.showText(QCursor.pos(),str(self.exposure)+" us")
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event,self.roi)
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,event,self.roi)
 
     def iso_position(self):
         self.iso = self.iso_slider.value()
+        self.cam_settings['eiso'] = self.iso
         event = 'iso'
         QToolTip.showText(QCursor.pos(),str(self.iso))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event,self.roi)
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,event,self.roi)
 
     def contrast_position(self):
         self.contrast = self.contrast_slider.value()
+        self.cam_settings['contrast'] = self.contrast
         event = 'contrast'
         QToolTip.showText(QCursor.pos(),str(self.contrast))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event,self.roi)
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,event,self.roi)
 
     def saturation_position(self):
         self.saturation = self.saturation_slider.value()
+        self.cam_settings['saturation'] = self.saturation
         event = 'saturation'
         QToolTip.showText(QCursor.pos(),str(self.saturation))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event,self.roi)
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,event,self.roi)
 
     def sharpness_position(self):
         self.sharpness = self.sharpness_slider.value()
+        self.cam_settings['sharpness'] = self.sharpness
         event = 'sharpness'
         QToolTip.showText(QCursor.pos(),str(self.sharpness))
-        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,event,self.roi)
+        self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,event,self.roi)
         
 
     @Slot()
@@ -898,7 +923,7 @@ class Window(QMainWindow):
             if self.table.item(0,0) is not None:
                 self.source = self.table.item(0,0).text()
             if self.table.item(0,0) and not self.scrollth.isRunning():
-                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+                self.th.set_file(self.table.item(0,0),0,self.master_mode,self.cam_settings,None,self.roi)
                 if self.oak is not None:
                     self.make_cam_control_display()
             
@@ -1053,7 +1078,7 @@ class Window(QMainWindow):
         i+=1
         self.play.setDisabled(1)
         self.play.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.cam_settings,None,self.roi)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -1098,7 +1123,7 @@ class Window(QMainWindow):
         i-=1
         self.rewind.setDisabled(1)
         self.rewind.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+        self.th.set_file(self.table.item(0,0),i,self.master_mode,self.cam_settings,None,self.roi)
         self.active_widget = self.findChild(QWidget,str(i))
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)
@@ -1142,7 +1167,7 @@ class Window(QMainWindow):
     def pauseButtonClicked(self):
         self.pause.setDisabled(1)
         self.pause.setCheckable(0)
-        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()),self.master_mode,self.autoexp,self.focus,self.exposure,self.iso,self.brightness,self.contrast,self.saturation,self.sharpness,None,self.roi)
+        self.th.set_file(self.table.item(0,0),int(self.active_widget.objectName()),self.master_mode,self.cam_settings,None,self.roi)
         widgets = self.contentwidget.findChildren(QLabel)
         self.active_widget.setStyleSheet("border: 5px solid green;")
         self.scrollArea.ensureWidgetVisible(self.active_widget)

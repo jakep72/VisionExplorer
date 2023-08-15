@@ -4,6 +4,7 @@ from torch.utils.data import Dataset, DataLoader, BatchSampler
 import clip
 from PIL import Image
 import pandas as pd
+from pathlib import Path
 
 
 class image_title_dataset(Dataset):
@@ -31,6 +32,7 @@ def load_data(csv_file, batch_size, preprocess):
     list_text = df["captions"].to_list()
 
     tokens = list(set(list_text))
+    Path("model_checkpoints").mkdir(exist_ok=True)
     torch.save(tokens,"model_checkpoints/tokens.pt")
 
     dataset = image_title_dataset(list_image_path, list_text, preprocess)
@@ -38,8 +40,8 @@ def load_data(csv_file, batch_size, preprocess):
     return train_dataloader
 
 
-def train_clip(csv_file, base_model="RN101", batch_size=16, epochs=5, save_freq=1):
-
+def train_clip(csv_file, base_model="RN101", batch_size=16, epochs=10):
+    loss_list = []
     device = "cuda:0" if torch.cuda.is_available() else "cpu"
     model, preprocess = clip.load(base_model, device=device, jit=False)
     train_dataloader = load_data(csv_file, batch_size, preprocess)
@@ -76,11 +78,19 @@ def train_clip(csv_file, base_model="RN101", batch_size=16, epochs=5, save_freq=
                 convert_models_to_fp32(model)
                 optimizer.step()
                 clip.model.convert_weights(model)
-
-        if epochs % save_freq == 0:
+        
+        loss_list.append(total_loss)
+        prev_loss = loss_list[epoch-1]
+        current_loss = total_loss
+        if len(loss_list) == 1 or current_loss < prev_loss:
             torch.save({
                 'epoch': epoch,
                 'model_state_dict': model.state_dict(),
                 'optimizer_state_dict': optimizer.state_dict(),
                 'loss': total_loss,
-            }, "model_checkpoints/model_{}.pt".format(epoch))
+            }, "model_checkpoints/model_best.pt")
+
+        else:
+            print("early stopping.... current loss greater than previous loss.")
+            break
+        

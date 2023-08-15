@@ -27,19 +27,19 @@ class Thread(QThread):
         self.vid_formats = ('.mp4','.avi','.mov','.wmv')
         self.mixed_formats = ('.mp4','.avi','.mov','.wmv','.jpg','.bmp','.jpe','.jpeg','.tif','.tiff')
         self.glob_formats = ['*.jpg','*.bmp','*.jpe','*.jpeg','*.tif','*.tiff']
-        
-    def set_file(self, fname,frame_no,master_mode,auto,focus,exposure,iso,brightness,contrast,saturation,sharpness,event,roi):
+
+    def set_file(self, fname,frame_no,master_mode,cam_settings,event,roi):
         self.image_source =  fname.text()
         self.frame_no = int(frame_no)
         self.master_mode = master_mode
-        self.auto = auto
-        self.exposure = exposure
-        self.iso = iso
-        self.focus = focus
-        self.brightness = brightness
-        self.contrast = contrast
-        self.saturation = saturation
-        self.sharpness = sharpness
+        self.auto = cam_settings['autoexp']
+        self.exposure = cam_settings['exposure']
+        self.iso = cam_settings['iso']
+        self.focus = cam_settings['focus']
+        self.brightness = cam_settings['brightness']
+        self.contrast = cam_settings['contrast']
+        self.saturation = cam_settings['saturation']
+        self.sharpness = cam_settings['sharpness']
         self.event = event
         self.roi = roi
         self.rect_start = None
@@ -63,7 +63,7 @@ class Thread(QThread):
     def run(self):
         while True:
             self.status = True
-            
+            points = None
             if self.image_source != None:
 
                 ##### Video or Image files -- offline mode only #####

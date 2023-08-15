@@ -10,7 +10,7 @@ def clip_inference(image_path, model_folder, map=True):
     model, preprocess = clip.load("RN101", device=device)
 
     if model_folder:
-        cp_path = Path(model_folder) / Path("model_2.pt")
+        cp_path = Path(model_folder) / Path("model_best.pt")
         checkpoint = torch.load(cp_path)
         model.load_state_dict(checkpoint['model_state_dict'])
 
